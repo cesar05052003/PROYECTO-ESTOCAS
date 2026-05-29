@@ -1,0 +1,174 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Usuario {
+  id        String   @id @default(uuid())
+  nombre    String
+  email     String   @unique
+  password  String
+  rol       String   @default("CONDUCTOR")
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  conductor      Conductor?
+  documentos     Documento[]
+  incidentes     Incidente[]
+  capacitaciones UsuarioCapacitacion[]
+}
+
+model Conductor {
+  id                  String    @id @default(uuid())
+  usuarioId           String    @unique
+  usuario             Usuario   @relation(fields: [usuarioId], references: [id])
+  cedula              String    @unique
+  telefono            String?
+  licenciaCategoria   String
+  licenciaVencimiento DateTime
+  estado              String    @default("activo")
+  createdAt           DateTime  @default(now())
+
+  vehiculoId     String?
+  vehiculo       Vehiculo?           @relation(fields: [vehiculoId], references: [id])
+  incidentes     Incidente[]
+  capacitaciones UsuarioCapacitacion[]
+}
+
+model Vehiculo {
+  id                       String    @id @default(uuid())
+  placa                    String    @unique
+  marca                    String
+  modelo                   String
+  anio                     Int
+  tipo                     String
+  kilometraje              Int       @default(0)
+  soatVencimiento          DateTime
+  tecnomecanicaVencimiento DateTime
+  estado                   String    @default("operativo")
+  createdAt                DateTime  @default(now())
+
+  conductores    Conductor[]
+  incidentes     Incidente[]
+  mantenimientos Mantenimiento[]
+}
+
+model Mantenimiento {
+  id          String   @id @default(uuid())
+  vehiculoId  String
+  vehiculo    Vehiculo @relation(fields: [vehiculoId], references: [id])
+  tipo        String
+  descripcion String
+  costo       Float?
+  fecha       DateTime
+  taller      String?
+  createdAt   DateTime @default(now())
+}
+
+model Documento {
+  id             String   @id @default(uuid())
+  titulo         String
+  categoria      String
+  version        Int      @default(1)
+  contenido      String
+  estado         String   @default("BORRADOR")
+  generadoIA     Boolean  @default(false)
+  pasoResolucion Int?
+  creadoPor      String
+  usuario        Usuario  @relation(fields: [creadoPor], references: [id])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Riesgo {
+  id               String   @id @default(uuid())
+  nombre           String
+  descripcion      String
+  categoria        String
+  fuente           String?
+  probabilidad     Int
+  impacto          Int
+  nivelRiesgo      Int
+  controlExistente String?
+  responsable      String?
+  estado           String   @default("IDENTIFICADO")
+  pasoPESV         String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model Capacitacion {
+  id          String   @id @default(uuid())
+  titulo      String
+  descripcion String
+  contenido   String
+  duracion    Int
+  categoria   String
+  obligatoria Boolean  @default(true)
+  activo      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  participantes UsuarioCapacitacion[]
+  preguntas     Pregunta[]
+}
+
+model Pregunta {
+  id                String       @id @default(uuid())
+  capacitacionId    String
+  capacitacion      Capacitacion @relation(fields: [capacitacionId], references: [id])
+  enunciado         String
+  opciones          String
+  respuestaCorrecta Int
+}
+
+model UsuarioCapacitacion {
+  id             String       @id @default(uuid())
+  usuarioId      String
+  conductorId    String?
+  capacitacionId String
+  usuario        Usuario      @relation(fields: [usuarioId], references: [id])
+  conductor      Conductor?   @relation(fields: [conductorId], references: [id])
+  capacitacion   Capacitacion @relation(fields: [capacitacionId], references: [id])
+  puntaje        Float?
+  aprobado       Boolean      @default(false)
+  completadoEn   DateTime?
+  createdAt      DateTime     @default(now())
+}
+
+model Incidente {
+  id            String     @id @default(uuid())
+  tipo          String
+  descripcion   String
+  fecha         DateTime
+  lugar         String
+  municipio     String?
+  vehiculoId    String?
+  conductorId   String?
+  reportadoPor  String
+  vehiculo      Vehiculo?  @relation(fields: [vehiculoId], references: [id])
+  conductor     Conductor? @relation(fields: [conductorId], references: [id])
+  usuario       Usuario    @relation(fields: [reportadoPor], references: [id])
+  lesionados    Int        @default(0)
+  muertos       Int        @default(0)
+  costoEstimado Float?
+  severidad     String     @default("MODERADO")
+  investigacion String?
+  estado        String     @default("REPORTADO")
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+}
+
+model Alerta {
+  id            String   @id @default(uuid())
+  tipo          String
+  mensaje       String
+  entidadId     String
+  entidadTipo   String
+  diasRestantes Int?
+  leida         Boolean  @default(false)
+  createdAt     DateTime @default(now())
+}
