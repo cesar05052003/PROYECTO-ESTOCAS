@@ -101,7 +101,7 @@ export default function Homepage() {
         <div
           className="absolute inset-0 z-0"
           style={{
-            backgroundImage: `url('${CLOUDINARY_CONFIG.IMAGES.HERO_BACKGROUND}')`,
+            backgroundImage: `url('https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=1600&h=900&fit=crop')`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
           }}
@@ -209,7 +209,7 @@ export default function Homepage() {
             <div
               className="relative h-96 md:h-[500px] lg:h-[600px] w-full"
               style={{
-                backgroundImage: `linear-gradient(135deg, rgba(30, 58, 138, 0.4) 0%, rgba(6, 182, 212, 0.3) 100%), url('https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=1600&h=900&fit=crop')`,
+                backgroundImage: `linear-gradient(135deg, rgba(30, 58, 138, 0.4) 0%, rgba(6, 182, 212, 0.3) 100%), url('${CLOUDINARY_CONFIG.IMAGES.HERO_BACKGROUND}')`,
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
               }}
