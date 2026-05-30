@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Shield, Eye, EyeOff } from "lucide-react";
+import { Shield, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { login } from "../services/auth.service";
 import useAuthStore from "../store/authStore";
 
@@ -13,6 +13,8 @@ export default function Login() {
   const navigate = useNavigate();
   const setAuth = useAuthStore((s) => s.setAuth);
 
+  const [rememberMe, setRememberMe] = useState(false);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -20,6 +22,11 @@ export default function Login() {
     try {
       const { data } = await login(email, password);
       setAuth(data.user, data.token);
+      if (rememberMe) {
+        localStorage.setItem('pesv_remember_email', email);
+      } else {
+        localStorage.removeItem('pesv_remember_email');
+      }
       navigate("/dashboard");
     } catch (err) {
       setError(err.response?.data?.error || "Error al iniciar sesión. Verifica tus credenciales.");
@@ -52,7 +59,15 @@ export default function Login() {
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-2xl p-8" style={{ boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
+        <div className="bg-white rounded-2xl p-8 relative" style={{ boxShadow: "0 20px 60px rgba(0,0,0,0.3)", animation: "fadeInUp 0.6s ease-out" }}>
+          {/* Botón Volver */}
+          <button
+            onClick={() => navigate('/')}
+            className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            style={{ color: "var(--text-secondary)" }}
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
           <h2 className="text-base font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
             Bienvenido
           </h2>
@@ -96,7 +111,7 @@ export default function Login() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   placeholder="••••••••"
-                  className="w-full px-3 py-2.5 rounded-lg border text-sm pr-10"
+                  className="w-full px-3 py-2.5 rounded-lg border text-sm pr-10 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
                   style={{
                     backgroundColor: "var(--bg-input)",
                     borderColor: "var(--border)",
@@ -106,12 +121,33 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={() => setShowPwd((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 hover:text-blue-600 transition-colors"
                   style={{ color: "var(--text-muted)" }}
                 >
                   {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
+              <button
+                type="button"
+                className="text-xs text-blue-600 hover:text-blue-700 mt-2 transition-colors"
+              >
+                ¿Olvidaste tu contraseña?
+              </button>
+            </div>
+
+            {/* Checkbox Recordarme */}
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="remember"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="w-4 h-4 rounded border-gray-300 cursor-pointer"
+                style={{ accentColor: "var(--accent)" }}
+              />
+              <label htmlFor="remember" className="text-xs cursor-pointer" style={{ color: "var(--text-secondary)" }}>
+                Recordarme en este dispositivo
+              </label>
             </div>
 
             <button
@@ -131,8 +167,13 @@ export default function Login() {
             </button>
           </form>
 
+          {/* Separador visual */}
+          <div className="my-6">
+            <div className="w-full border-t" style={{ borderColor: "var(--border)" }}></div>
+          </div>
+
           {/* Credenciales demo */}
-          <div className="mt-6 pt-5 border-t" style={{ borderColor: "var(--border)" }}>
+          <div className="mt-2">
             <p className="text-xs font-medium mb-3" style={{ color: "var(--text-muted)" }}>
               CREDENCIALES DE DEMOSTRACIÓN
             </p>

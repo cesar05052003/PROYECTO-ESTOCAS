@@ -1,0 +1,12 @@
+const { Router } = require("express");
+const { obtenerComite, crearComite, agregarMiembro, eliminarMiembro, crearReunion, listarReuniones } = require("./comite.controller");
+const { verifyToken } = require("../../middlewares/auth.middleware");
+const router = Router();
+router.use(verifyToken);
+router.get("/", obtenerComite);
+router.post("/", crearComite);
+router.post("/miembros", agregarMiembro);
+router.delete("/miembros/:id", eliminarMiembro);
+router.post("/reuniones", crearReunion);
+router.get("/reuniones", listarReuniones);
+module.exports = router;

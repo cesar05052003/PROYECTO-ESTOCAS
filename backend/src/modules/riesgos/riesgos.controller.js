@@ -2,18 +2,17 @@ const prisma = require("../../config/db");
 
 const listar = async (req, res, next) => {
   try {
-    const { categoria, estado, page = 1 } = req.query;
-    const PAGE_SIZE = 20;
-    const skip = (parseInt(page) - 1) * PAGE_SIZE;
+    const { categoria, estado } = req.query;
     const where = {};
     if (categoria) where.categoria = categoria;
     if (estado) where.estado = estado;
 
-    const [riesgos, total] = await Promise.all([
-      prisma.riesgo.findMany({ where, skip, take: PAGE_SIZE, orderBy: { nivelRiesgo: "desc" } }),
-      prisma.riesgo.count({ where }),
-    ]);
-    res.json({ data: riesgos, total, page: parseInt(page) });
+    const riesgos = await prisma.riesgo.findMany({
+      where,
+      orderBy: { nivelRiesgo: "desc" },
+      include: { diagnostico: { select: { anio: true } } },
+    });
+    res.json(riesgos);
   } catch (err) {
     next(err);
   }
@@ -22,7 +21,6 @@ const listar = async (req, res, next) => {
 const matriz = async (req, res, next) => {
   try {
     const riesgos = await prisma.riesgo.findMany({ orderBy: { nivelRiesgo: "desc" } });
-    // Agrupar por celda probabilidad-impacto
     const cells = {};
     for (let p = 1; p <= 5; p++) {
       for (let i = 1; i <= 5; i++) {
@@ -42,7 +40,7 @@ const matriz = async (req, res, next) => {
 
 const crear = async (req, res, next) => {
   try {
-    const { nombre, descripcion, categoria, fuente, probabilidad, impacto, controlExistente, responsable, estado, pasoPESV } = req.body;
+    const { nombre, descripcion, categoria, fuente, probabilidad, impacto, controlExistente, accionCorrectiva, responsable, estado, diagnosticoId } = req.body;
     const p = parseInt(probabilidad);
     const i = parseInt(impacto);
     const riesgo = await prisma.riesgo.create({
@@ -50,9 +48,10 @@ const crear = async (req, res, next) => {
         nombre, descripcion, categoria, fuente: fuente || null,
         probabilidad: p, impacto: i, nivelRiesgo: p * i,
         controlExistente: controlExistente || null,
+        accionCorrectiva: accionCorrectiva || null,
         responsable: responsable || null,
         estado: estado || "IDENTIFICADO",
-        pasoPESV: pasoPESV || null,
+        diagnosticoId: diagnosticoId || null,
       },
     });
     res.status(201).json(riesgo);
@@ -63,7 +62,7 @@ const crear = async (req, res, next) => {
 
 const actualizar = async (req, res, next) => {
   try {
-    const { nombre, descripcion, categoria, fuente, probabilidad, impacto, controlExistente, responsable, estado, pasoPESV } = req.body;
+    const { nombre, descripcion, categoria, fuente, probabilidad, impacto, controlExistente, accionCorrectiva, responsable, estado } = req.body;
     const p = probabilidad ? parseInt(probabilidad) : undefined;
     const i = impacto ? parseInt(impacto) : undefined;
     const riesgo = await prisma.riesgo.update({
@@ -77,9 +76,9 @@ const actualizar = async (req, res, next) => {
         ...(i && { impacto: i }),
         ...(p && i && { nivelRiesgo: p * i }),
         ...(controlExistente !== undefined && { controlExistente }),
+        ...(accionCorrectiva !== undefined && { accionCorrectiva }),
         ...(responsable !== undefined && { responsable }),
         ...(estado && { estado }),
-        ...(pasoPESV !== undefined && { pasoPESV }),
       },
     });
     res.json(riesgo);

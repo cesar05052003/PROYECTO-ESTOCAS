@@ -1,0 +1,10 @@
+const { Router } = require("express");
+const { listar, crear, actualizar, informe } = require("./auditoria.controller");
+const { verifyToken } = require("../../middlewares/auth.middleware");
+const router = Router();
+router.use(verifyToken);
+router.get("/", listar);
+router.post("/", crear);
+router.put("/:id", actualizar);
+router.get("/:id/informe", informe);
+module.exports = router;

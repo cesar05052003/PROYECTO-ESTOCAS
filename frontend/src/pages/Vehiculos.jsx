@@ -1,51 +1,45 @@
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Truck, AlertTriangle, X } from "lucide-react";
+import { Plus, Truck, AlertTriangle } from "lucide-react";
 import Header from "../components/layout/Header";
 import DataTable from "../components/ui/DataTable";
 import StatusBadge from "../components/ui/StatusBadge";
 import Modal from "../components/ui/Modal";
-import { getVehiculos, crearVehiculo, actualizarVehiculo, getVehiculo } from "../services/vehiculos.service";
-import { getConductores } from "../services/conductores.service";
+import { getVehiculos, crearVehiculo, getVehiculo } from "../services/vehiculos.service";
 
 const fmtFecha = (d) => new Date(d).toLocaleDateString("es-CO");
 const fmtKm = (n) => n?.toLocaleString("es-CO") + " km";
 
+const getAlertaStatus = (fecha) => {
+  const dias = Math.ceil((new Date(fecha) - new Date()) / (1000 * 60 * 60 * 24));
+  if (dias < 0) return "danger";
+  if (dias <= 30) return "warning";
+  return null;
+};
+
 export default function Vehiculos() {
-  const [tab, setTab] = useState("vehiculos");
   const [vehiculos, setVehiculos] = useState([]);
-  const [conductores, setConductores] = useState([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [pages, setPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [alertas, setAlertas] = useState({ vencidos: 0, proximos: 0 });
   const [modalNuevo, setModalNuevo] = useState(false);
   const [modalFicha, setModalFicha] = useState(false);
   const [fichaVehiculo, setFichaVehiculo] = useState(null);
-  const [form, setForm] = useState({ placa: "", marca: "", modelo: "", anio: new Date().getFullYear(), tipo: "Camión", kilometraje: 0, soatVencimiento: "", tecnomecanicaVencimiento: "", estado: "operativo" });
+  const [form, setForm] = useState({ placa: "", marca: "", modelo: "", anio: new Date().getFullYear(), tipo: "Camión", kilometraje: 0, soatVencimiento: "", tecnomecanicaVencimiento: "", estado: "ACTIVO" });
 
   const cargar = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await getVehiculos({ page });
-      setVehiculos(data.data);
-      setTotal(data.total);
-      setPages(data.pages);
-      const venc = data.data.filter((v) => v.alertaSoat === "VENCIDO" || v.alertaTec === "VENCIDO").length;
-      const prox = data.data.filter((v) => v.alertaSoat === "PROXIMO" || v.alertaTec === "PROXIMO").length;
+      const { data } = await getVehiculos();
+      const lista = Array.isArray(data) ? data : data.data || [];
+      setVehiculos(lista);
+      const venc = lista.filter((v) => getAlertaStatus(v.soatVencimiento) === "danger" || getAlertaStatus(v.tecnomecanicaVencimiento) === "danger").length;
+      const prox = lista.filter((v) => getAlertaStatus(v.soatVencimiento) === "warning" || getAlertaStatus(v.tecnomecanicaVencimiento) === "warning").length;
       setAlertas({ vencidos: venc, proximos: prox });
     } finally {
       setLoading(false);
     }
-  }, [page]);
-
-  const cargarConductores = useCallback(async () => {
-    const { data } = await getConductores();
-    setConductores(data.data || []);
   }, []);
 
   useEffect(() => { cargar(); }, [cargar]);
-  useEffect(() => { if (tab === "conductores") cargarConductores(); }, [tab, cargarConductores]);
 
   const handleVerFicha = async (id) => {
     const { data } = await getVehiculo(id);
@@ -56,13 +50,16 @@ export default function Vehiculos() {
   const handleCrear = async (e) => {
     e.preventDefault();
     try {
-      await crearVehiculo(form);
+      await crearVehiculo({ ...form, anio: parseInt(form.anio), kilometraje: parseInt(form.kilometraje) });
       setModalNuevo(false);
+      setForm({ placa: "", marca: "", modelo: "", anio: new Date().getFullYear(), tipo: "Camión", kilometraje: 0, soatVencimiento: "", tecnomecanicaVencimiento: "", estado: "ACTIVO" });
       cargar();
     } catch (err) {
       alert(err.response?.data?.error || "Error al crear vehículo");
     }
   };
+
+  const estadoMap = { ACTIVO: "success", EN_MANTENIMIENTO: "warning", FUERA_DE_SERVICIO: "danger" };
 
   const vehiculoColumns = [
     {
@@ -82,91 +79,56 @@ export default function Vehiculos() {
     { key: "kilometraje", title: "Km", render: (v) => <span className="mono text-xs">{fmtKm(v)}</span> },
     {
       key: "soatVencimiento", title: "SOAT",
-      render: (v, row) => (
-        <div>
-          <div className="text-xs">{fmtFecha(v)}</div>
-          {row.alertaSoat && <StatusBadge status={row.alertaSoat} size="xs" />}
-        </div>
-      ),
+      render: (v) => {
+        const alerta = getAlertaStatus(v);
+        return (
+          <div>
+            <div className="text-xs">{fmtFecha(v)}</div>
+            {alerta && <StatusBadge status={alerta} label={alerta === "danger" ? "Vencido" : "Próximo"} />}
+          </div>
+        );
+      },
     },
     {
       key: "tecnomecanicaVencimiento", title: "Tec-Mec",
-      render: (v, row) => (
-        <div>
-          <div className="text-xs">{fmtFecha(v)}</div>
-          {row.alertaTec && <StatusBadge status={row.alertaTec} size="xs" />}
-        </div>
-      ),
-    },
-    { key: "estado", title: "Estado", render: (v) => <StatusBadge status={v} /> },
-  ];
-
-  const conductorColumns = [
-    {
-      key: "usuario", title: "Conductor",
-      render: (v, row) => (
-        <div>
-          <div className="font-medium text-sm" style={{ color: "var(--text-primary)" }}>{v?.nombre}</div>
-          <div className="text-xs" style={{ color: "var(--text-muted)" }}>CC {row.cedula}</div>
-        </div>
-      ),
-    },
-    { key: "licenciaCategoria", title: "Categoría", render: (v) => <span className="mono font-semibold">{v}</span> },
-    {
-      key: "licenciaVencimiento", title: "Vence licencia",
-      render: (v, row) => (
-        <div>
-          <div className="text-xs">{fmtFecha(v)}</div>
-          {row.alertaLicencia && <StatusBadge status={row.alertaLicencia} size="xs" />}
-        </div>
-      ),
-    },
-    { key: "estado", title: "Estado", render: (v) => <StatusBadge status={v} /> },
-    {
-      key: "vehiculo", title: "Vehículo asignado",
-      render: (v) => v ? <span className="mono text-sm">{v.placa}</span> : <span style={{ color: "var(--text-muted)" }}>—</span>,
+      render: (v) => {
+        const alerta = getAlertaStatus(v);
+        return (
+          <div>
+            <div className="text-xs">{fmtFecha(v)}</div>
+            {alerta && <StatusBadge status={alerta} label={alerta === "danger" ? "Vencido" : "Próximo"} />}
+          </div>
+        );
+      },
     },
     {
-      key: "_count", title: "Incidentes",
-      render: (v) => <span className="mono">{v?.incidentes || 0}</span>,
+      key: "estado", title: "Estado",
+      render: (v) => <StatusBadge status={estadoMap[v] || "neutral"} label={v?.replace("_", " ")} />,
+    },
+    {
+      key: "conductores", title: "Conductor",
+      render: (v) => {
+        const activo = v?.find(vc => vc.activo);
+        return activo ? <span className="text-xs">{activo.conductor?.usuario?.nombre}</span> : <span className="text-xs" style={{ color: "var(--text-muted)" }}>—</span>;
+      },
     },
   ];
 
   return (
     <div className="flex flex-col h-full">
       <Header
-        title="Flota y Conductores"
-        subtitle="Control de vehículos y documentación · Paso 11 Resolución 40595"
+        title="Flota Vehicular"
+        subtitle={`${vehiculos.length} vehículos registrados · Paso 11 Resolución 40595`}
         actions={
-          tab === "vehiculos" && (
-            <button onClick={() => setModalNuevo(true)} className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm border" style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}>
-              <Plus size={15} /> Nuevo vehículo
-            </button>
-          )
+          <button onClick={() => setModalNuevo(true)} className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm border" style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}>
+            <Plus size={15} /> Nuevo vehículo
+          </button>
         }
       />
 
       <div className="flex-1 overflow-y-auto p-6">
-        {/* Tabs */}
-        <div className="flex gap-2 mb-4">
-          {[{ key: "vehiculos", label: "Vehículos" }, { key: "conductores", label: "Conductores" }].map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-              style={{
-                backgroundColor: tab === t.key ? "var(--accent)" : "white",
-                color: tab === t.key ? "white" : "var(--text-secondary)",
-                border: `1px solid ${tab === t.key ? "var(--accent)" : "var(--border)"}`,
-              }}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-
         {/* Alertas banner */}
-        {tab === "vehiculos" && (alertas.vencidos > 0 || alertas.proximos > 0) && (
+        {(alertas.vencidos > 0 || alertas.proximos > 0) && (
           <div className="flex flex-wrap gap-3 mb-4">
             {alertas.vencidos > 0 && (
               <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm" style={{ backgroundColor: "var(--danger-bg)", color: "var(--danger)" }}>
@@ -183,26 +145,13 @@ export default function Vehiculos() {
           </div>
         )}
 
-        {tab === "vehiculos" ? (
-          <DataTable
-            columns={vehiculoColumns}
-            data={vehiculos}
-            loading={loading}
-            page={page}
-            pages={pages}
-            onPageChange={setPage}
-            emptyTitle="Sin vehículos registrados"
-            emptySubtitle="Agrega los vehículos de la flota de TransCor S.A.S."
-          />
-        ) : (
-          <DataTable
-            columns={conductorColumns}
-            data={conductores}
-            loading={loading}
-            emptyTitle="Sin conductores registrados"
-            emptySubtitle="Los conductores se agregan desde el módulo de Conductores"
-          />
-        )}
+        <DataTable
+          columns={vehiculoColumns}
+          data={vehiculos}
+          loading={loading}
+          emptyTitle="Sin vehículos registrados"
+          emptySubtitle="Agrega los vehículos de la flota de TransCor S.A.S."
+        />
       </div>
 
       {/* Modal ficha vehículo */}
@@ -219,7 +168,7 @@ export default function Vehiculos() {
                 ["Kilometraje", fmtKm(fichaVehiculo.kilometraje)],
                 ["SOAT vence", fmtFecha(fichaVehiculo.soatVencimiento)],
                 ["Tec-Mec vence", fmtFecha(fichaVehiculo.tecnomecanicaVencimiento)],
-                ["Estado", <StatusBadge key="est" status={fichaVehiculo.estado} />],
+                ["Estado", fichaVehiculo.estado],
               ].map(([label, val]) => (
                 <div key={label}>
                   <div className="text-xs font-medium mb-1" style={{ color: "var(--text-muted)" }}>{label}</div>
@@ -227,6 +176,24 @@ export default function Vehiculos() {
                 </div>
               ))}
             </div>
+
+            {/* Inspecciones */}
+            {fichaVehiculo.inspecciones?.length > 0 && (
+              <div>
+                <h4 className="text-sm font-semibold mb-3" style={{ color: "var(--text-primary)" }}>Inspecciones recientes</h4>
+                <div className="space-y-2">
+                  {fichaVehiculo.inspecciones.slice(0, 5).map((ins) => (
+                    <div key={ins.id} className="p-3 rounded-lg border text-sm" style={{ borderColor: "var(--border)" }}>
+                      <div className="flex justify-between">
+                        <span className="font-medium">{ins.tipo} — {ins.resultado}</span>
+                        <span className="mono text-xs" style={{ color: "var(--text-muted)" }}>{fmtFecha(ins.fecha)}</span>
+                      </div>
+                      {ins.observaciones && <div className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>{ins.observaciones}</div>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {fichaVehiculo.mantenimientos?.length > 0 && (
               <div>

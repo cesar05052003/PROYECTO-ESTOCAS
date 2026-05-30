@@ -17,7 +17,7 @@ const nivelColor = (n) => {
   return { bg: "var(--success-bg)", text: "var(--success)" };
 };
 
-const categorias = ["HUMANO", "VEHICULAR", "INFRAESTRUCTURA", "ENTORNO"];
+const categorias = ["HUMANO", "VEHICULAR", "INFRAESTRUCTURA", "ENTORNO", "GESTION"];
 
 export default function Riesgos() {
   const [riesgos, setRiesgos] = useState([]);
@@ -36,8 +36,9 @@ export default function Riesgos() {
     setLoading(true);
     try {
       const [r, m] = await Promise.all([getRiesgos(), getMatriz()]);
-      setRiesgos(r.data.data);
-      setTotal(r.data.total);
+      const lista = Array.isArray(r.data) ? r.data : r.data.data || [];
+      setRiesgos(lista);
+      setTotal(lista.length);
       setMatriz(m.data);
     } finally {
       setLoading(false);

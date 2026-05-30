@@ -10,7 +10,7 @@ export default function DataTable({ columns, data, loading, emptyTitle, emptySub
             <tr>
               {columns.map((c) => (
                 <th key={c.key} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
-                  {c.title}
+                  {c.title || c.label}
                 </th>
               ))}
             </tr>
@@ -47,7 +47,7 @@ export default function DataTable({ columns, data, loading, emptyTitle, emptySub
                   className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider"
                   style={{ color: "var(--text-muted)", whiteSpace: "nowrap" }}
                 >
-                  {c.title}
+                  {c.title || c.label}
                 </th>
               ))}
             </tr>

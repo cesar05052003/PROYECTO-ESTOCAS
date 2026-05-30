@@ -12,29 +12,24 @@ const fmtFecha = (d) => new Date(d).toLocaleDateString("es-CO");
 export default function Conductores() {
   const [conductores, setConductores] = useState([]);
   const [vehiculos, setVehiculos] = useState([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [pages, setPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [modalEditar, setModalEditar] = useState(false);
   const [selected, setSelected] = useState(null);
-  const [form, setForm] = useState({ cedula: "", telefono: "", licenciaCategoria: "B2", licenciaVencimiento: "", estado: "activo", vehiculoId: "" });
+  const [form, setForm] = useState({ cedula: "", telefono: "", licenciaCategoria: "B2", licenciaVencimiento: "", estado: "activo" });
 
   const cargar = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await getConductores({ page });
-      setConductores(data.data);
-      setTotal(data.total);
-      setPages(data.pages);
+      const { data } = await getConductores();
+      setConductores(Array.isArray(data) ? data : data.data || []);
     } finally {
       setLoading(false);
     }
-  }, [page]);
+  }, []);
 
   useEffect(() => { cargar(); }, [cargar]);
   useEffect(() => {
-    getVehiculos().then(({ data }) => setVehiculos(data.data || []));
+    getVehiculos().then(({ data }) => setVehiculos(Array.isArray(data) ? data : data.data || []));
   }, []);
 
   const handleEditar = (conductor) => {
@@ -45,7 +40,6 @@ export default function Conductores() {
       licenciaCategoria: conductor.licenciaCategoria,
       licenciaVencimiento: conductor.licenciaVencimiento?.split("T")[0] || "",
       estado: conductor.estado,
-      vehiculoId: conductor.vehiculoId || "",
     });
     setModalEditar(true);
   };
@@ -59,6 +53,11 @@ export default function Conductores() {
     } catch (err) {
       alert(err.response?.data?.error || "Error al actualizar");
     }
+  };
+
+  const getVehiculoAsignado = (conductor) => {
+    const asignado = conductor.vehiculosAsignados?.find(va => va.activo);
+    return asignado?.vehiculo || null;
   };
 
   const columns = [
@@ -79,21 +78,15 @@ export default function Conductores() {
     { key: "licenciaCategoria", title: "Categoría", render: (v) => <span className="mono font-semibold px-2 py-1 rounded" style={{ backgroundColor: "var(--info-bg)", color: "var(--info)" }}>{v}</span> },
     {
       key: "licenciaVencimiento", title: "Vence licencia",
-      render: (v, row) => (
-        <div>
-          <div className="text-xs">{fmtFecha(v)}</div>
-          {row.alertaLicencia && <StatusBadge status={row.alertaLicencia} size="xs" />}
-        </div>
-      ),
+      render: (v) => <div className="text-xs">{fmtFecha(v)}</div>,
     },
-    { key: "estado", title: "Estado", render: (v) => <StatusBadge status={v} /> },
+    { key: "estado", title: "Estado", render: (v) => <StatusBadge status={v === "activo" ? "success" : v === "suspendido" ? "warning" : "neutral"} label={v} /> },
     {
       key: "vehiculo", title: "Vehículo",
-      render: (v) => v ? <span className="mono text-sm font-medium">{v.placa}</span> : <span style={{ color: "var(--text-muted)" }}>Sin asignar</span>,
-    },
-    {
-      key: "_count", title: "Incidentes",
-      render: (v) => <span className="mono">{v?.incidentes || 0}</span>,
+      render: (_, row) => {
+        const vehiculo = getVehiculoAsignado(row);
+        return vehiculo ? <span className="mono text-sm font-medium">{vehiculo.placa}</span> : <span style={{ color: "var(--text-muted)" }}>Sin asignar</span>;
+      },
     },
     {
       key: "acciones", title: "Acciones",
@@ -109,7 +102,7 @@ export default function Conductores() {
     <div className="flex flex-col h-full">
       <Header
         title="Conductores"
-        subtitle={`${total} conductores registrados · Paso 14 Resolución 40595`}
+        subtitle={`${conductores.length} conductores registrados · Paso 14 Resolución 40595`}
       />
 
       <div className="flex-1 overflow-y-auto p-6">
@@ -117,9 +110,6 @@ export default function Conductores() {
           columns={columns}
           data={conductores}
           loading={loading}
-          page={page}
-          pages={pages}
-          onPageChange={setPage}
           emptyTitle="Sin conductores registrados"
           emptySubtitle="Los conductores se crean al registrar usuarios con rol CONDUCTOR"
         />
@@ -161,22 +151,13 @@ export default function Conductores() {
               <input type="date" value={form.licenciaVencimiento} onChange={(e) => setForm({ ...form, licenciaVencimiento: e.target.value })} className="w-full px-3 py-2 rounded-lg border text-sm" style={{ backgroundColor: "var(--bg-input)", borderColor: "var(--border)" }} />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>Estado</label>
-              <select value={form.estado} onChange={(e) => setForm({ ...form, estado: e.target.value })} className="w-full px-3 py-2 rounded-lg border text-sm" style={{ backgroundColor: "var(--bg-input)", borderColor: "var(--border)" }}>
-                <option value="activo">Activo</option>
-                <option value="suspendido">Suspendido</option>
-                <option value="inactivo">Inactivo</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>Vehículo asignado</label>
-              <select value={form.vehiculoId} onChange={(e) => setForm({ ...form, vehiculoId: e.target.value })} className="w-full px-3 py-2 rounded-lg border text-sm" style={{ backgroundColor: "var(--bg-input)", borderColor: "var(--border)" }}>
-                <option value="">Sin asignar</option>
-                {vehiculos.map((v) => <option key={v.id} value={v.id}>{v.placa} — {v.marca} {v.modelo}</option>)}
-              </select>
-            </div>
+          <div>
+            <label className="block text-xs font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>Estado</label>
+            <select value={form.estado} onChange={(e) => setForm({ ...form, estado: e.target.value })} className="w-full px-3 py-2 rounded-lg border text-sm" style={{ backgroundColor: "var(--bg-input)", borderColor: "var(--border)" }}>
+              <option value="activo">Activo</option>
+              <option value="suspendido">Suspendido</option>
+              <option value="inactivo">Inactivo</option>
+            </select>
           </div>
         </form>
       </Modal>

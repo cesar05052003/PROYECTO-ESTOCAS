@@ -8,20 +8,13 @@ const kpis = async (req, res, next) => {
     const mesAnteriorFin = new Date(hoy.getFullYear(), hoy.getMonth(), 0);
 
     const [
-      conductoresActivos,
-      totalConductores,
-      vehiculosOperativos,
-      totalVehiculos,
-      incidentesMes,
-      incidentesMesAnterior,
-      documentosAprobados,
-      totalDocumentos,
-      conductoresConCapacitacion,
-      alertasSinLeer,
+      conductoresActivos, totalConductores, vehiculosOperativos, totalVehiculos,
+      incidentesMes, incidentesMesAnterior, documentosAprobados, totalDocumentos,
+      conductoresConCapacitacion, alertasSinLeer,
     ] = await Promise.all([
       prisma.conductor.count({ where: { estado: "activo" } }),
       prisma.conductor.count(),
-      prisma.vehiculo.count({ where: { estado: "operativo" } }),
+      prisma.vehiculo.count({ where: { estado: "ACTIVO" } }),
       prisma.vehiculo.count(),
       prisma.incidente.count({ where: { fecha: { gte: inicioMes } } }),
       prisma.incidente.count({ where: { fecha: { gte: mesAnteriorInicio, lte: mesAnteriorFin } } }),
@@ -35,25 +28,15 @@ const kpis = async (req, res, next) => {
     const tendenciaIncidentes = incidentesMes - incidentesMesAnterior;
 
     res.json({
-      conductoresActivos,
-      totalConductores,
-      vehiculosOperativos,
-      totalVehiculos,
-      incidentesMes,
-      incidentesMesAnterior,
-      tendenciaIncidentes,
-      cumplimiento,
-      documentosAprobados,
-      totalDocumentos,
+      conductoresActivos, totalConductores, vehiculosOperativos, totalVehiculos,
+      incidentesMes, incidentesMesAnterior, tendenciaIncidentes, cumplimiento,
+      documentosAprobados, totalDocumentos,
       conductoresCapacitados: conductoresConCapacitacion.length,
       alertasSinLeer,
     });
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 };
 
-// Versión compatible SQLite/PostgreSQL — agrupa incidentes en JS
 const accidentalidad = async (req, res, next) => {
   try {
     const hace6meses = new Date();
@@ -72,14 +55,12 @@ const accidentalidad = async (req, res, next) => {
       const d = new Date(inc.fecha);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       if (!meses[key]) meses[key] = { mes: mesNombres[d.getMonth()], accidentes: 0, casiAccidentes: 0 };
-      if (inc.tipo === "ACCIDENTE") meses[key].accidentes++;
+      if (inc.tipo.startsWith("ACCIDENTE")) meses[key].accidentes++;
       else if (inc.tipo === "CASI_ACCIDENTE") meses[key].casiAccidentes++;
     });
 
     res.json(Object.values(meses));
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 };
 
 const alertasRecientes = async (req, res, next) => {
@@ -90,9 +71,7 @@ const alertasRecientes = async (req, res, next) => {
       take: 10,
     });
     res.json(alertas);
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 };
 
 const cumplimiento = async (req, res, next) => {
@@ -103,9 +82,9 @@ const cumplimiento = async (req, res, next) => {
       prisma.capacitacion.count({ where: { activo: true } }),
       prisma.usuarioCapacitacion.count({ where: { aprobado: true } }),
       prisma.riesgo.count(),
-      prisma.riesgo.count({ where: { estado: { in: ["EN_CONTROL", "CONTROLADO"] } } }),
+      prisma.riesgo.count({ where: { estado: { in: ["CONTROLADO", "EN_TRATAMIENTO"] } } }),
       prisma.vehiculo.count(),
-      prisma.vehiculo.count({ where: { estado: "operativo" } }),
+      prisma.vehiculo.count({ where: { estado: "ACTIVO" } }),
       prisma.incidente.count(),
       prisma.incidente.count({ where: { estado: "CERRADO" } }),
     ]);
@@ -117,18 +96,14 @@ const cumplimiento = async (req, res, next) => {
       { nombre: "Control Flota", porcentaje: totalVeh > 0 ? Math.round((operativos / totalVeh) * 100) : 0, color: "#1E40AF" },
       { nombre: "Cierre Incidentes", porcentaje: totalInc > 0 ? Math.round((cerrados / totalInc) * 100) : 0, color: "#991B1B" },
     ]);
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 };
 
 const marcarAlertaLeida = async (req, res, next) => {
   try {
     await prisma.alerta.update({ where: { id: req.params.id }, data: { leida: true } });
     res.json({ ok: true });
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 };
 
 module.exports = { kpis, accidentalidad, alertasRecientes, cumplimiento, marcarAlertaLeida };

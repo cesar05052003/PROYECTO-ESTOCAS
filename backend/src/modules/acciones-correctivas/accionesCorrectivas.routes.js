@@ -1,0 +1,10 @@
+const { Router } = require("express");
+const { listar, crear, actualizar, cerrar } = require("./accionesCorrectivas.controller");
+const { verifyToken } = require("../../middlewares/auth.middleware");
+const router = Router();
+router.use(verifyToken);
+router.get("/", listar);
+router.post("/", crear);
+router.put("/:id", actualizar);
+router.post("/:id/cerrar", cerrar);
+module.exports = router;

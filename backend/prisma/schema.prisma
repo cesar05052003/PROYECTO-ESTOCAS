@@ -7,6 +7,8 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ─── USUARIOS Y ROLES ────────────────────────────────────────────
+
 model Usuario {
   id        String   @id @default(uuid())
   nombre    String
@@ -15,12 +17,51 @@ model Usuario {
   rol       String   @default("CONDUCTOR")
   activo    Boolean  @default(true)
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  conductor      Conductor?
-  documentos     Documento[]
-  incidentes     Incidente[]
-  capacitaciones UsuarioCapacitacion[]
+  conductor           Conductor?
+  documentos          Documento[]
+  incidentes          Incidente[]
+  capacitaciones      UsuarioCapacitacion[]
+  accionesCorrectivas AccionCorrectiva[]
 }
+
+// ─── PASO 1 Y 2: LÍDER Y COMITÉ DE SEGURIDAD VIAL ───────────────
+
+model ComiteSeguridadVial {
+  id            String   @id @default(uuid())
+  nombre        String
+  fechaCreacion DateTime
+  acta          String?
+  actaUrl       String?
+  createdAt     DateTime @default(now())
+
+  miembros  MiembroComite[]
+  reuniones ReunionComite[]
+}
+
+model MiembroComite {
+  id        String              @id @default(uuid())
+  comiteId  String
+  comite    ComiteSeguridadVial @relation(fields: [comiteId], references: [id])
+  nombre    String
+  cargo     String
+  esLider   Boolean             @default(false)
+  createdAt DateTime            @default(now())
+}
+
+model ReunionComite {
+  id        String              @id @default(uuid())
+  comiteId  String
+  comite    ComiteSeguridadVial @relation(fields: [comiteId], references: [id])
+  fecha     DateTime
+  tema      String
+  acta      String?
+  actaUrl   String?
+  createdAt DateTime            @default(now())
+}
+
+// ─── CONDUCTORES ─────────────────────────────────────────────────
 
 model Conductor {
   id                  String    @id @default(uuid())
@@ -28,46 +69,86 @@ model Conductor {
   usuario             Usuario   @relation(fields: [usuarioId], references: [id])
   cedula              String    @unique
   telefono            String?
+  fechaNacimiento     DateTime?
   licenciaCategoria   String
   licenciaVencimiento DateTime
+  fotoCedula          String?
+  fotoLicencia        String?
+  nivelEducacion      String?
+  experienciaAnios    Int?
   estado              String    @default("activo")
   createdAt           DateTime  @default(now())
 
-  vehiculoId     String?
-  vehiculo       Vehiculo?           @relation(fields: [vehiculoId], references: [id])
-  incidentes     Incidente[]
-  capacitaciones UsuarioCapacitacion[]
+  vehiculosAsignados VehiculoConductor[]
+  incidentes         Incidente[]
+  capacitaciones     UsuarioCapacitacion[]
+  desplazamientos    Desplazamiento[]
 }
 
+// ─── VEHÍCULOS ───────────────────────────────────────────────────
+
 model Vehiculo {
-  id                       String    @id @default(uuid())
-  placa                    String    @unique
+  id                       String   @id @default(uuid())
+  placa                    String   @unique
   marca                    String
   modelo                   String
   anio                     Int
   tipo                     String
-  kilometraje              Int       @default(0)
+  kilometraje              Int      @default(0)
   soatVencimiento          DateTime
   tecnomecanicaVencimiento DateTime
-  estado                   String    @default("operativo")
-  createdAt                DateTime  @default(now())
+  estado                   String   @default("ACTIVO")
+  createdAt                DateTime @default(now())
 
-  conductores    Conductor[]
-  incidentes     Incidente[]
-  mantenimientos Mantenimiento[]
+  conductores     VehiculoConductor[]
+  mantenimientos  Mantenimiento[]
+  incidentes      Incidente[]
+  inspecciones    InspeccionVehiculo[]
+  desplazamientos Desplazamiento[]
 }
+
+model VehiculoConductor {
+  id          String    @id @default(uuid())
+  vehiculoId  String
+  conductorId String
+  vehiculo    Vehiculo  @relation(fields: [vehiculoId], references: [id])
+  conductor   Conductor @relation(fields: [conductorId], references: [id])
+  asignadoEn  DateTime  @default(now())
+  activo      Boolean   @default(true)
+}
+
+// ─── PASO 16: INSPECCIÓN DE VEHÍCULOS ────────────────────────────
+
+model InspeccionVehiculo {
+  id            String   @id @default(uuid())
+  vehiculoId    String
+  vehiculo      Vehiculo @relation(fields: [vehiculoId], references: [id])
+  fecha         DateTime
+  tipo          String
+  resultado     String
+  observaciones String?
+  imagenUrl     String?
+  realizadoPor  String
+  createdAt     DateTime @default(now())
+}
+
+// ─── PASO 17: MANTENIMIENTO ──────────────────────────────────────
 
 model Mantenimiento {
-  id          String   @id @default(uuid())
-  vehiculoId  String
-  vehiculo    Vehiculo @relation(fields: [vehiculoId], references: [id])
-  tipo        String
-  descripcion String
-  costo       Float?
-  fecha       DateTime
-  taller      String?
-  createdAt   DateTime @default(now())
+  id              String    @id @default(uuid())
+  vehiculoId      String
+  vehiculo        Vehiculo  @relation(fields: [vehiculoId], references: [id])
+  tipo            String
+  descripcion     String
+  costo           Float?
+  fecha           DateTime
+  proximaRevision DateTime?
+  taller          String?
+  facturaUrl      String?
+  createdAt       DateTime  @default(now())
 }
+
+// ─── GESTIÓN DOCUMENTAL ──────────────────────────────────────────
 
 model Documento {
   id             String   @id @default(uuid())
@@ -75,6 +156,7 @@ model Documento {
   categoria      String
   version        Int      @default(1)
   contenido      String
+  archivoUrl     String?
   estado         String   @default("BORRADOR")
   generadoIA     Boolean  @default(false)
   pasoResolucion Int?
@@ -82,24 +164,80 @@ model Documento {
   usuario        Usuario  @relation(fields: [creadoPor], references: [id])
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+
+  versiones VersionDocumento[]
+}
+
+model VersionDocumento {
+  id          String    @id @default(uuid())
+  documentoId String
+  documento   Documento @relation(fields: [documentoId], references: [id])
+  version     Int
+  contenido   String
+  creadoEn    DateTime  @default(now())
+}
+
+// ─── PASO 5 Y 6: DIAGNÓSTICO Y RIESGOS ──────────────────────────
+
+model Diagnostico {
+  id           String   @id @default(uuid())
+  anio         Int
+  descripcion  String
+  hallazgos    String
+  conclusiones String?
+  createdAt    DateTime @default(now())
+
+  riesgos Riesgo[]
 }
 
 model Riesgo {
-  id               String   @id @default(uuid())
+  id               String       @id @default(uuid())
+  diagnosticoId    String?
+  diagnostico      Diagnostico? @relation(fields: [diagnosticoId], references: [id])
   nombre           String
   descripcion      String
   categoria        String
   fuente           String?
   probabilidad     Int
   impacto          Int
-  nivelRiesgo      Int
+  nivelRiesgo      Int          @default(0)
   controlExistente String?
+  accionCorrectiva String?
   responsable      String?
-  estado           String   @default("IDENTIFICADO")
-  pasoPESV         String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  estado           String       @default("IDENTIFICADO")
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
 }
+
+// ─── PASO 8: PROGRAMAS DE GESTIÓN DE RIESGOS CRÍTICOS ───────────
+
+model ProgramaRiesgoCritico {
+  id          String   @id @default(uuid())
+  nombre      String
+  objetivo    String
+  alcance     String
+  actividades String
+  responsable String
+  indicadores String
+  presupuesto Float?
+  estado      String   @default("ACTIVO")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ─── PASO 9: PLAN ANUAL DE TRABAJO ──────────────────────────────
+
+model PlanAnualTrabajo {
+  id          String   @id @default(uuid())
+  anio        Int
+  objetivos   String
+  actividades String
+  estado      String   @default("EN_EJECUCION")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ─── PASO 10: CAPACITACIONES Y PLAN DE FORMACIÓN ─────────────────
 
 model Capacitacion {
   id          String   @id @default(uuid())
@@ -135,32 +273,147 @@ model UsuarioCapacitacion {
   capacitacion   Capacitacion @relation(fields: [capacitacionId], references: [id])
   puntaje        Float?
   aprobado       Boolean      @default(false)
+  certificadoUrl String?
+  intentos       Int          @default(0)
   completadoEn   DateTime?
   createdAt      DateTime     @default(now())
 }
 
-model Incidente {
-  id            String     @id @default(uuid())
-  tipo          String
-  descripcion   String
-  fecha         DateTime
-  lugar         String
-  municipio     String?
-  vehiculoId    String?
-  conductorId   String?
-  reportadoPor  String
-  vehiculo      Vehiculo?  @relation(fields: [vehiculoId], references: [id])
-  conductor     Conductor? @relation(fields: [conductorId], references: [id])
-  usuario       Usuario    @relation(fields: [reportadoPor], references: [id])
-  lesionados    Int        @default(0)
-  muertos       Int        @default(0)
-  costoEstimado Float?
-  severidad     String     @default("MODERADO")
-  investigacion String?
-  estado        String     @default("REPORTADO")
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+// ─── PASO 12: PLAN DE EMERGENCIAS ───────────────────────────────
+
+model PlanEmergencia {
+  id                  String    @id @default(uuid())
+  titulo              String
+  descripcion         String
+  procedimientos      String
+  contactosEmergencia String
+  version             Int       @default(1)
+  aprobadoEn          DateTime?
+  documentoUrl        String?
+  createdAt           DateTime  @default(now())
 }
+
+// ─── PASO 13: INVESTIGACIÓN DE SINIESTROS ────────────────────────
+
+model Incidente {
+  id                     String    @id @default(uuid())
+  tipo                   String
+  descripcion            String
+  fecha                  DateTime
+  hora                   String?
+  lugar                  String
+  municipio              String?
+  departamento           String?
+  vehiculoId             String?
+  conductorId            String?
+  reportadoPor           String
+  vehiculo               Vehiculo?  @relation(fields: [vehiculoId], references: [id])
+  conductor              Conductor? @relation(fields: [conductorId], references: [id])
+  usuario                Usuario    @relation(fields: [reportadoPor], references: [id])
+  lesionados             Int        @default(0)
+  muertos                Int        @default(0)
+  costoEstimado          Float?
+  severidad              String     @default("MODERADO")
+  causasDirectas         String?
+  causasBasicas          String?
+  factoresContribuyentes String?
+  investigacion          String?
+  estado                 String     @default("REPORTADO")
+  createdAt              DateTime   @default(now())
+  updatedAt              DateTime   @updatedAt
+
+  fotos               FotoIncidente[]
+  accionesCorrectivas AccionCorrectiva[]
+}
+
+model FotoIncidente {
+  id          String    @id @default(uuid())
+  incidenteId String
+  incidente   Incidente @relation(fields: [incidenteId], references: [id])
+  url         String
+  descripcion String?
+  createdAt   DateTime  @default(now())
+}
+
+// ─── PASO 15: DESPLAZAMIENTOS LABORALES ─────────────────────────
+
+model Desplazamiento {
+  id            String    @id @default(uuid())
+  conductorId   String
+  vehiculoId    String
+  conductor     Conductor @relation(fields: [conductorId], references: [id])
+  vehiculo      Vehiculo  @relation(fields: [vehiculoId], references: [id])
+  origen        String
+  destino       String
+  rutaUrl       String?
+  fechaSalida   DateTime
+  fechaLlegada  DateTime?
+  distanciaKm   Float?
+  observaciones String?
+  createdAt     DateTime  @default(now())
+}
+
+// ─── PASO 23: ACCIONES CORRECTIVAS Y PREVENTIVAS ─────────────────
+
+model AccionCorrectiva {
+  id           String     @id @default(uuid())
+  incidenteId  String?
+  incidente    Incidente? @relation(fields: [incidenteId], references: [id])
+  tipo         String
+  descripcion  String
+  responsable  String
+  usuarioId    String
+  usuario      Usuario    @relation(fields: [usuarioId], references: [id])
+  fechaLimite  DateTime
+  estado       String     @default("PENDIENTE")
+  evidenciaUrl String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+// ─── PASO 20: INDICADORES Y REPORTE DE AUTOGESTIÓN ───────────────
+
+model ReporteAutogestion {
+  id                       String    @id @default(uuid())
+  anio                     Int
+  mes                      Int
+  indicadorMetas           Float?
+  indicadorAccidentes      Float?
+  indicadorMuertos         Float?
+  indicadorLesionados      Float?
+  indicadorCapacitaciones  Float?
+  indicadorMantenimiento   Float?
+  indicadorInspecciones    Float?
+  indicadorExcesoVelocidad Float?
+  indicadorJornadaExcedida Float?
+  indicadorVehiculosPrograma Float?
+  cumplimientoGeneral      Float?
+  observaciones            String?
+  generadoIA               Boolean   @default(false)
+  reporteUrl               String?
+  enviadoSupertransporte   Boolean   @default(false)
+  fechaEnvio               DateTime?
+  createdAt                DateTime  @default(now())
+}
+
+// ─── PASO 22: AUDITORÍA ANUAL ────────────────────────────────────
+
+model Auditoria {
+  id              String   @id @default(uuid())
+  anio            Int
+  tipo            String
+  fechaInicio     DateTime
+  fechaFin        DateTime
+  auditor         String
+  hallazgos       String
+  noConformidades String
+  recomendaciones String?
+  informeUrl      String?
+  estado          String   @default("EN_PROCESO")
+  createdAt       DateTime @default(now())
+}
+
+// ─── ALERTAS ─────────────────────────────────────────────────────
 
 model Alerta {
   id            String   @id @default(uuid())

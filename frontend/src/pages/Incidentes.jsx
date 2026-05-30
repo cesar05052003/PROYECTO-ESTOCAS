@@ -15,7 +15,7 @@ import { investigarIncidente } from "../services/ia.service";
 import { useRole } from "../hooks/useRole";
 
 const fmtFecha = (d) => new Date(d).toLocaleDateString("es-CO");
-const PIE_COLORS = { ACCIDENTE: "#991B1B", CASI_ACCIDENTE: "#1B6CA8", INFRACCION: "#92400E" };
+const PIE_COLORS = { ACCIDENTE_SOLO_DANOS: "#991B1B", ACCIDENTE_CON_LESIONADOS: "#7F1D1D", ACCIDENTE_CON_MUERTOS: "#450A0A", CASI_ACCIDENTE: "#1B6CA8", INFRACCION_TRANSITO: "#92400E" };
 
 export default function Incidentes() {
   const { isAdmin, isLider } = useRole();
@@ -31,15 +31,16 @@ export default function Incidentes() {
   const [iaLoading, setIaLoading] = useState(null);
   const [iaModal, setIaModal] = useState(false);
   const [iaContenido, setIaContenido] = useState("");
-  const [form, setForm] = useState({ tipo: "ACCIDENTE", descripcion: "", fecha: "", lugar: "", municipio: "Montería", vehiculoId: "", conductorId: "", lesionados: 0, muertos: 0, costoEstimado: "", severidad: "MODERADO" });
+  const [form, setForm] = useState({ tipo: "ACCIDENTE_SOLO_DANOS", descripcion: "", fecha: "", lugar: "", municipio: "Montería", vehiculoId: "", conductorId: "", lesionados: 0, muertos: 0, costoEstimado: "", severidad: "MODERADO" });
 
   const cargar = useCallback(async () => {
     setLoading(true);
     try {
       const [inc, stat] = await Promise.all([getIncidentes({ page }), getEstadisticas()]);
-      setIncidentes(inc.data.data);
-      setTotal(inc.data.total);
-      setPages(inc.data.pages);
+      const lista = inc.data.data || (Array.isArray(inc.data) ? inc.data : []);
+      setIncidentes(lista);
+      setTotal(inc.data.total || lista.length);
+      setPages(inc.data.pages || 1);
       setStats(stat.data);
     } finally {
       setLoading(false);
@@ -48,8 +49,8 @@ export default function Incidentes() {
 
   useEffect(() => { cargar(); }, [cargar]);
   useEffect(() => {
-    getConductores().then(({ data }) => setConductores(data.data || []));
-    getVehiculos().then(({ data }) => setVehiculos(data.data || []));
+    getConductores().then(({ data }) => setConductores(Array.isArray(data) ? data : data.data || []));
+    getVehiculos().then(({ data }) => setVehiculos(Array.isArray(data) ? data : data.data || []));
   }, []);
 
   const handleInvestigar = async (incidenteId) => {
@@ -226,9 +227,11 @@ export default function Incidentes() {
             <div>
               <label className="block text-xs font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>Tipo</label>
               <select value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value })} className="w-full px-3 py-2 rounded-lg border text-sm" style={{ backgroundColor: "var(--bg-input)", borderColor: "var(--border)" }}>
-                <option value="ACCIDENTE">Accidente</option>
+                <option value="ACCIDENTE_SOLO_DANOS">Accidente solo daños</option>
+                <option value="ACCIDENTE_CON_LESIONADOS">Accidente con lesionados</option>
+                <option value="ACCIDENTE_CON_MUERTOS">Accidente con muertos</option>
                 <option value="CASI_ACCIDENTE">Casi-accidente</option>
-                <option value="INFRACCION">Infracción</option>
+                <option value="INFRACCION_TRANSITO">Infracción de tránsito</option>
               </select>
             </div>
             <div>

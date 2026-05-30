@@ -1,40 +1,19 @@
 const prisma = require("../../config/db");
 
-const PAGE_SIZE = 10;
-
 const listar = async (req, res, next) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const skip = (page - 1) * PAGE_SIZE;
-
-    const [conductores, total] = await Promise.all([
-      prisma.conductor.findMany({
-        skip,
-        take: PAGE_SIZE,
-        include: {
-          usuario: { select: { nombre: true, email: true } },
-          vehiculo: { select: { placa: true, marca: true, modelo: true } },
-          _count: { select: { incidentes: true } },
+    const conductores = await prisma.conductor.findMany({
+      orderBy: { createdAt: "desc" },
+      include: {
+        usuario: { select: { nombre: true, email: true, rol: true } },
+        vehiculosAsignados: {
+          where: { activo: true },
+          include: { vehiculo: { select: { placa: true, marca: true, modelo: true } } },
         },
-        orderBy: { createdAt: "desc" },
-      }),
-      prisma.conductor.count(),
-    ]);
-
-    const hoy = new Date();
-    const data = conductores.map((c) => {
-      const diasLicencia = Math.ceil((new Date(c.licenciaVencimiento) - hoy) / (1000 * 60 * 60 * 24));
-      return {
-        ...c,
-        alertaLicencia: diasLicencia <= 0 ? "VENCIDA" : diasLicencia <= 15 ? "CRITICA" : diasLicencia <= 30 ? "PROXIMA" : null,
-        diasLicencia,
-      };
+      },
     });
-
-    res.json({ data, total, page, pages: Math.ceil(total / PAGE_SIZE) });
-  } catch (err) {
-    next(err);
-  }
+    res.json(conductores);
+  } catch (err) { next(err); }
 };
 
 const obtener = async (req, res, next) => {
@@ -42,53 +21,59 @@ const obtener = async (req, res, next) => {
     const conductor = await prisma.conductor.findUnique({
       where: { id: req.params.id },
       include: {
-        usuario: { select: { nombre: true, email: true } },
-        vehiculo: true,
+        usuario: { select: { nombre: true, email: true, rol: true } },
+        vehiculosAsignados: { include: { vehiculo: true } },
         incidentes: { orderBy: { fecha: "desc" }, take: 10 },
-        capacitaciones: {
-          include: { capacitacion: { select: { titulo: true, categoria: true } } },
-        },
+        capacitaciones: { include: { capacitacion: { select: { titulo: true, categoria: true } } } },
+        desplazamientos: { orderBy: { fechaSalida: "desc" }, take: 10 },
       },
     });
     if (!conductor) return res.status(404).json({ error: "Conductor no encontrado" });
     res.json(conductor);
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 };
 
 const crear = async (req, res, next) => {
   try {
-    const { cedula, telefono, licenciaCategoria, licenciaVencimiento, estado, vehiculoId, usuarioId } = req.body;
+    const { usuarioId, cedula, telefono, fechaNacimiento, licenciaCategoria, licenciaVencimiento, nivelEducacion, experienciaAnios, vehiculoId } = req.body;
     const conductor = await prisma.conductor.create({
-      data: { cedula, telefono, licenciaCategoria, licenciaVencimiento: new Date(licenciaVencimiento), estado: estado || "activo", vehiculoId: vehiculoId || null, usuarioId },
-      include: { usuario: { select: { nombre: true, email: true } } },
+      data: {
+        usuarioId, cedula, telefono,
+        fechaNacimiento: fechaNacimiento ? new Date(fechaNacimiento) : null,
+        licenciaCategoria, licenciaVencimiento: new Date(licenciaVencimiento),
+        nivelEducacion, experienciaAnios,
+      },
     });
+    if (vehiculoId) {
+      await prisma.vehiculoConductor.create({ data: { vehiculoId, conductorId: conductor.id } });
+    }
     res.status(201).json(conductor);
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 };
 
 const actualizar = async (req, res, next) => {
   try {
-    const { cedula, telefono, licenciaCategoria, licenciaVencimiento, estado, vehiculoId } = req.body;
-    const conductor = await prisma.conductor.update({
-      where: { id: req.params.id },
-      data: {
-        ...(cedula && { cedula }),
-        ...(telefono && { telefono }),
-        ...(licenciaCategoria && { licenciaCategoria }),
-        ...(licenciaVencimiento && { licenciaVencimiento: new Date(licenciaVencimiento) }),
-        ...(estado && { estado }),
-        vehiculoId: vehiculoId ?? undefined,
-      },
-      include: { usuario: { select: { nombre: true, email: true } } },
-    });
+    const data = { ...req.body };
+    if (data.licenciaVencimiento) data.licenciaVencimiento = new Date(data.licenciaVencimiento);
+    if (data.fechaNacimiento) data.fechaNacimiento = new Date(data.fechaNacimiento);
+    delete data.vehiculoId;
+    const conductor = await prisma.conductor.update({ where: { id: req.params.id }, data });
     res.json(conductor);
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 };
 
-module.exports = { listar, obtener, crear, actualizar };
+const historial = async (req, res, next) => {
+  try {
+    const [incidentes, capacitaciones, desplazamientos] = await Promise.all([
+      prisma.incidente.findMany({ where: { conductorId: req.params.id }, orderBy: { fecha: "desc" } }),
+      prisma.usuarioCapacitacion.findMany({
+        where: { conductorId: req.params.id },
+        include: { capacitacion: { select: { titulo: true, categoria: true } } },
+      }),
+      prisma.desplazamiento.findMany({ where: { conductorId: req.params.id }, orderBy: { fechaSalida: "desc" }, take: 20 }),
+    ]);
+    res.json({ incidentes, capacitaciones, desplazamientos });
+  } catch (err) { next(err); }
+};
+
+module.exports = { listar, obtener, crear, actualizar, historial };

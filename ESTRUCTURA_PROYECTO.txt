@@ -1,0 +1,185 @@
+ESTRUCTURA DEL PROYECTO - PESV DIGITAL
+═════════════════════════════════════════════════════════════════════════════
+
+PESV (Raíz del Proyecto)
+│
+├── backend/                          # Backend Node.js/Express
+│   ├── prisma/
+│   ├── src/
+│   └── ... archivos del backend
+│
+├── frontend/                         # Frontend React
+│   ├── src/
+│   │   ├── pages/
+│   │   │   ├── Homepage.jsx          ✨ NUEVO - Página principal
+│   │   │   ├── Dashboard.jsx
+│   │   │   ├── Login.jsx
+│   │   │   ├── Conductores.jsx
+│   │   │   ├── Vehiculos.jsx
+│   │   │   ├── Incidentes.jsx
+│   │   │   ├── Riesgos.jsx
+│   │   │   └── ... más páginas
+│   │   │
+│   │   ├── components/
+│   │   │   └── layout/
+│   │   │       ├── Navbar.jsx        ✨ NUEVO - Barra de navegación
+│   │   │       ├── Footer.jsx        ✨ NUEVO - Pie de página
+│   │   │       ├── Sidebar.jsx
+│   │   │       ├── Header.jsx
+│   │   │       └── Layout.jsx
+│   │   │
+│   │   ├── config/
+│   │   │   └── cloudinary.js         ✨ NUEVO - Configuración de imágenes
+│   │   │
+│   │   ├── App.jsx                   ✏️ ACTUALIZADO - Incluye ruta "/"
+│   │   ├── index.css                 ✏️ ACTUALIZADO - Nuevas animaciones
+│   │   ├── main.jsx
+│   │   └── ... otros archivos
+│   │
+│   ├── index.html
+│   ├── package.json
+│   ├── vite.config.js
+│   ├── tailwind.config.js
+│   └── HOMEPAGE_GUIDE.md             ✨ NUEVO - Guía de personalización
+│
+├── HOMEPAGE_SETUP.md                 ✨ NUEVO - Instalación rápida
+├── HOMEPAGE_EXAMPLES.md              ✨ NUEVO - Ejemplos de código
+├── HOMEPAGE_RESUMEN.md               ✨ NUEVO - Resumen general
+├── ARCHIVO_DE_INSTALACION.txt        ✨ NUEVO - Instrucciones visuales
+└── ESTRUCTURA_PROYECTO.txt           ✨ NUEVO - Este archivo
+
+═════════════════════════════════════════════════════════════════════════════
+
+ARCHIVOS PRINCIPALES CREADOS:
+
+📄 frontend/src/pages/Homepage.jsx
+   └─ Componente principal de la página de inicio
+   └─ Contiene todas las secciones del homepage
+   └─ Aproximadamente 360 líneas de código React
+
+📄 frontend/src/components/layout/Navbar.jsx
+   └─ Barra de navegación responsiva
+   └─ Logo, botones de login/registro
+   └─ Menú móvil integrado
+
+📄 frontend/src/components/layout/Footer.jsx
+   └─ Pie de página profesional
+   └─ Contacto, links, redes sociales
+
+📄 frontend/src/config/cloudinary.js
+   └─ Configuración centralizada de imágenes
+   └─ Fácil de actualizar URLs
+
+📄 frontend/src/App.jsx (ACTUALIZADO)
+   └─ Ahora "/" apunta a Homepage
+   └─ Login/Registro en rutas públicas
+   └─ Dashboard y módulos protegidos
+
+📄 frontend/src/index.css (ACTUALIZADO)
+   └─ Nuevas animaciones
+   └─ Efectos glassmorphism
+   └─ Estilos modernos
+
+═════════════════════════════════════════════════════════════════════════════
+
+COMPONENTES DEL HOMEPAGE:
+
+Header (Navbar.jsx)
+├─ Logo con escudo
+├─ Menú de navegación
+├─ Botón: Iniciar Sesión
+├─ Botón: Registrarse
+└─ Menú responsive móvil
+
+Hero Section
+├─ Imagen de fondo profesional
+├─ Overlay gradiente oscuro
+├─ Título principal con gradiente
+├─ Subtítulo descriptivo
+├─ CTA Buttons animados
+└─ Scroll indicator
+
+About Section
+├─ Descripción de Resolución 40595
+└─ 4 tarjetas de características
+
+Maturity Levels
+├─ Nivel Básico (18 pasos)
+├─ Nivel Estándar (22 pasos)
+└─ Nivel Avanzado (24 pasos)
+
+Key Components Section
+├─ Líder Estratégico
+├─ Política de Seguridad
+├─ Evaluación de Riesgos
+├─ Planeación Desplazamientos
+├─ Inspección Vehículos
+└─ Integración Normativa
+
+CTA Section
+├─ Título llamativo
+├─ Botón: Inicia Gratis
+└─ Botón: Solicitar Demo
+
+Footer (Footer.jsx)
+├─ Logo y descripción
+├─ Links rápidos
+├─ Links legales
+├─ Información de contacto
+└─ Redes sociales
+
+═════════════════════════════════════════════════════════════════════════════
+
+ANIMACIONES IMPLEMENTADAS:
+
+✨ Fade-in - Aparece con transparencia gradual
+📈 Slide-up - Sube mientras aparece
+⬇️ Slide-down - Baja mientras aparece
+➡️ Slide-in-left - Entra desde la izquierda
+⬅️ Slide-in-right - Entra desde la derecha
+🔄 Bounce - Efecto de rebote continuo
+💫 Glow - Efecto de brillo pulsante
+
+═════════════════════════════════════════════════════════════════════════════
+
+SISTEMA DE COLORES:
+
+Primarios:
+  🔵 Azul Principal: #1B6CA8
+  🔵 Azul Hover: #155A8F
+  🔵 Azul Claro: #E8F1F9
+
+Secundarios:
+  ⚪ Blanco: #FFFFFF
+  ⚫ Gris Oscuro: #0F1923
+  🩶 Gris Medio: #4B5563
+  🩶 Gris Claro: #CBD5E1
+
+═════════════════════════════════════════════════════════════════════════════
+
+PASOS PARA EMPEZAR:
+
+1. Abrir terminal: cd frontend
+2. Instalar deps: npm install
+3. Iniciar dev: npm run dev
+4. Abrir: http://localhost:5173
+
+═════════════════════════════════════════════════════════════════════════════
+
+DOCUMENTACIÓN DISPONIBLE:
+
+📖 HOMEPAGE_SETUP.md - Instalación rápida
+📖 HOMEPAGE_GUIDE.md - Guía completa
+📖 HOMEPAGE_EXAMPLES.md - Ejemplos de código
+📖 HOMEPAGE_RESUMEN.md - Resumen ejecutivo
+📖 ESTRUCTURA_PROYECTO.txt - Este documento
+
+═════════════════════════════════════════════════════════════════════════════
+
+✅ TODO ESTÁ LISTO PARA EMPEZAR
+
+¡Tu Homepage PESV Digital está completamente funcional!
+
+Creado con ❤️ para la Resolución 40595 de 2022
+
+═════════════════════════════════════════════════════════════════════════════

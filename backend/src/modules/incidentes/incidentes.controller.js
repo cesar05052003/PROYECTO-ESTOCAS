@@ -57,8 +57,8 @@ const estadisticas = async (req, res, next) => {
     todos.forEach((inc) => {
       const d = new Date(inc.fecha);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      if (!mesesMap[key]) mesesMap[key] = { mes: mesNombres[d.getMonth()], accidentes: 0n, casi_accidentes: 0n, total: 0n };
-      if (inc.tipo === "ACCIDENTE") mesesMap[key].accidentes++;
+      if (!mesesMap[key]) mesesMap[key] = { mes: mesNombres[d.getMonth()], accidentes: 0, casi_accidentes: 0, total: 0 };
+      if (inc.tipo.startsWith("ACCIDENTE")) mesesMap[key].accidentes++;
       else if (inc.tipo === "CASI_ACCIDENTE") mesesMap[key].casi_accidentes++;
       mesesMap[key].total++;
     });

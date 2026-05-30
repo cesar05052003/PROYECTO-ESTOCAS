@@ -1,0 +1,10 @@
+const { Router } = require("express");
+const { listar, obtener, crear, actualizar } = require("./planTrabajo.controller");
+const { verifyToken } = require("../../middlewares/auth.middleware");
+const router = Router();
+router.use(verifyToken);
+router.get("/", listar);
+router.get("/:anio", obtener);
+router.post("/", crear);
+router.put("/:id", actualizar);
+module.exports = router;

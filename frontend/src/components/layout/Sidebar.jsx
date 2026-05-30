@@ -2,38 +2,58 @@ import { NavLink, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Sparkles, FileText, AlertTriangle,
   GraduationCap, Truck, Users, ClipboardList,
-  Shield, LogOut, ChevronRight,
+  Shield, LogOut, Users2, FileSearch, Target,
+  CalendarDays, Siren, Route, Wrench,
+  BarChart3, ClipboardCheck, RefreshCw,
 } from "lucide-react";
 import useAuthStore from "../../store/authStore";
 import { useRole } from "../../hooks/useRole";
 
 const gruposCompletos = [
   {
-    label: "GENERAL",
+    label: "PLANIFICACIÓN",
     items: [
       { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-      { to: "/asistente", icon: Sparkles, label: "Asistente IA" },
-    ],
-  },
-  {
-    label: "GESTIÓN PESV",
-    items: [
+      { to: "/comite", icon: Users2, label: "Comité" },
       { to: "/documentos", icon: FileText, label: "Documentos" },
+      { to: "/diagnostico", icon: FileSearch, label: "Diagnóstico" },
       { to: "/riesgos", icon: AlertTriangle, label: "Riesgos" },
-      { to: "/capacitaciones", icon: GraduationCap, label: "Capacitaciones" },
     ],
   },
   {
-    label: "OPERACIONES",
+    label: "IMPLEMENTACIÓN",
     items: [
+      { to: "/plan-trabajo", icon: CalendarDays, label: "Plan de Trabajo" },
+      { to: "/capacitaciones", icon: GraduationCap, label: "Capacitaciones" },
+      { to: "/emergencias", icon: Siren, label: "Emergencias" },
+      { to: "/incidentes", icon: ClipboardList, label: "Incidentes" },
+      { to: "/desplazamientos", icon: Route, label: "Desplazamientos" },
       { to: "/vehiculos", icon: Truck, label: "Vehículos" },
       { to: "/conductores", icon: Users, label: "Conductores" },
-      { to: "/incidentes", icon: ClipboardList, label: "Incidentes" },
+    ],
+  },
+  {
+    label: "SEGUIMIENTO",
+    items: [
+      { to: "/reportes", icon: BarChart3, label: "Indicadores" },
+      { to: "/auditoria", icon: ClipboardCheck, label: "Auditoría" },
+    ],
+  },
+  {
+    label: "MEJORA CONTINUA",
+    items: [
+      { to: "/mejora-continua", icon: RefreshCw, label: "Acciones" },
+    ],
+  },
+  {
+    label: "",
+    items: [
+      { to: "/asistente", icon: Sparkles, label: "IA Asistente" },
     ],
   },
 ];
 
-const rolLabels = { ADMIN: "Administrador", LIDER_PESV: "Líder PESV", GERENTE: "Gerente", CONDUCTOR: "Conductor" };
+const rolLabels = { ADMIN: "Administrador", LIDER_PESV: "Líder PESV", GERENTE: "Gerente", CONDUCTOR: "Conductor", MIEMBRO_COMITE: "Miembro Comité" };
 
 export default function Sidebar({ isOpen, onClose }) {
   const user = useAuthStore((s) => s.user);
@@ -45,16 +65,20 @@ export default function Sidebar({ isOpen, onClose }) {
     if (isAdmin() || isLider()) return gruposCompletos;
 
     if (isGerente()) {
-      return [gruposCompletos[0]];
+      return [
+        { label: "PLANIFICACIÓN", items: [gruposCompletos[0].items[0]] },
+        { label: "SEGUIMIENTO", items: gruposCompletos[2].items },
+        gruposCompletos[4],
+      ];
     }
 
     if (isConductor()) {
       return [
-        gruposCompletos[0],
+        { label: "PLANIFICACIÓN", items: [gruposCompletos[0].items[0]] },
         {
-          label: "OPERACIONES",
-          items: gruposCompletos[2].items.filter((item) =>
-            item.to === "/capacitaciones" || item.to === "/incidentes"
+          label: "IMPLEMENTACIÓN",
+          items: gruposCompletos[1].items.filter((item) =>
+            ["/capacitaciones", "/incidentes", "/desplazamientos"].includes(item.to)
           ),
         },
       ];
@@ -94,14 +118,16 @@ export default function Sidebar({ isOpen, onClose }) {
 
         {/* Navegación */}
         <nav className="flex-1 overflow-y-auto py-4 px-3">
-          {getVisibleGrupos().map((grupo) => (
-            <div key={grupo.label} className="mb-4">
-              <div
-                className="px-2 mb-1 text-xs font-semibold tracking-wider uppercase"
-                style={{ color: "rgba(203,213,225,0.5)", fontSize: 10 }}
-              >
-                {grupo.label}
-              </div>
+          {getVisibleGrupos().map((grupo, gi) => (
+            <div key={gi} className="mb-4">
+              {grupo.label && (
+                <div
+                  className="px-2 mb-1 font-semibold tracking-wider uppercase"
+                  style={{ color: "rgba(203,213,225,0.5)", fontSize: 10, letterSpacing: "0.08em" }}
+                >
+                  {grupo.label}
+                </div>
+              )}
               {grupo.items.map(({ to, icon: Icon, label }) => (
                 <NavLink
                   key={to}
@@ -117,7 +143,8 @@ export default function Sidebar({ isOpen, onClose }) {
                   style={({ isActive }) => ({
                     backgroundColor: isActive ? "var(--sidebar-active)" : "transparent",
                     color: isActive ? "var(--sidebar-active-text)" : "var(--sidebar-text)",
-                    borderLeft: isActive ? "3px solid var(--accent)" : "3px solid transparent",
+                    borderLeft: isActive ? "2px solid var(--accent)" : "2px solid transparent",
+                    paddingLeft: isActive ? 14 : 12,
                   })}
                 >
                   <Icon size={17} />
