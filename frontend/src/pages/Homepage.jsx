@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ChevronDown, Shield, Users, TrendingUp, CheckCircle2, Lock, AlertTriangle, FileText, BarChart3, Map, Eye, Zap, Award } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import { CLOUDINARY_CONFIG } from '../config/cloudinary';
 
 export default function Homepage() {
+  const navigate = useNavigate();
   const [isScrolled, setIsScrolled] = useState(false);
   const [visibleCards, setVisibleCards] = useState(false);
 
@@ -132,7 +134,7 @@ export default function Homepage() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button className="px-8 py-4 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-2xl">
+            <button onClick={() => navigate('/login')} className="px-8 py-4 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-2xl">
               Iniciar Sesión
             </button>
           </div>
