@@ -1,9 +1,12 @@
 const { Router } = require("express");
-const { listar, crear, actualizar } = require("./mantenimientos.controller");
+const { listar, crear, actualizar, completar, proximos, estadisticas } = require("./mantenimientos.controller");
 const { verifyToken } = require("../../middlewares/auth.middleware");
 const router = Router();
 router.use(verifyToken);
+router.get("/estadisticas", estadisticas);
+router.get("/proximos", proximos);
 router.get("/", listar);
 router.post("/", crear);
+router.put("/:id/completar", completar);
 router.put("/:id", actualizar);
 module.exports = router;

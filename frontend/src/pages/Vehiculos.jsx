@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Truck, AlertTriangle } from "lucide-react";
+import { Plus, Truck, AlertTriangle, Wrench, CheckCircle } from "lucide-react";
 import Header from "../components/layout/Header";
 import DataTable from "../components/ui/DataTable";
 import StatusBadge from "../components/ui/StatusBadge";
 import Modal from "../components/ui/Modal";
 import { getVehiculos, crearVehiculo, getVehiculo } from "../services/vehiculos.service";
+import { crearMantenimiento, completarMantenimiento } from "../services/mantenimientos.service";
 
 const fmtFecha = (d) => new Date(d).toLocaleDateString("es-CO");
 const fmtKm = (n) => n?.toLocaleString("es-CO") + " km";
@@ -16,6 +17,8 @@ const getAlertaStatus = (fecha) => {
   return null;
 };
 
+const formMantInit = { tipo: "PREVENTIVO", descripcion: "", costo: "", fecha: "", proximaRevision: "", taller: "" };
+
 export default function Vehiculos() {
   const [vehiculos, setVehiculos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -23,6 +26,10 @@ export default function Vehiculos() {
   const [modalNuevo, setModalNuevo] = useState(false);
   const [modalFicha, setModalFicha] = useState(false);
   const [fichaVehiculo, setFichaVehiculo] = useState(null);
+  const [showFormMant, setShowFormMant] = useState(false);
+  const [formMant, setFormMant] = useState(formMantInit);
+  const [errorMant, setErrorMant] = useState("");
+  const [loadingMant, setLoadingMant] = useState(false);
   const [form, setForm] = useState({ placa: "", marca: "", modelo: "", anio: new Date().getFullYear(), tipo: "Camión", kilometraje: 0, soatVencimiento: "", tecnomecanicaVencimiento: "", estado: "ACTIVO" });
 
   const cargar = useCallback(async () => {
@@ -44,6 +51,9 @@ export default function Vehiculos() {
   const handleVerFicha = async (id) => {
     const { data } = await getVehiculo(id);
     setFichaVehiculo(data);
+    setShowFormMant(false);
+    setFormMant(formMantInit);
+    setErrorMant("");
     setModalFicha(true);
   };
 
@@ -56,6 +66,36 @@ export default function Vehiculos() {
       cargar();
     } catch (err) {
       alert(err.response?.data?.error || "Error al crear vehículo");
+    }
+  };
+
+  const handleCrearMantenimiento = async (e) => {
+    e.preventDefault();
+    setErrorMant("");
+    setLoadingMant(true);
+    try {
+      await crearMantenimiento({ ...formMant, vehiculoId: fichaVehiculo.id, costo: formMant.costo ? parseFloat(formMant.costo) : null });
+      // Recargar ficha para ver cambios
+      const { data } = await getVehiculo(fichaVehiculo.id);
+      setFichaVehiculo(data);
+      setShowFormMant(false);
+      setFormMant(formMantInit);
+      cargar();
+    } catch (err) {
+      setErrorMant(err.response?.data?.error || "Error al registrar mantenimiento.");
+    }
+    setLoadingMant(false);
+  };
+
+  const handleCompletarMantenimiento = async (mantId) => {
+    if (!window.confirm("¿Confirmar que el mantenimiento fue completado? El vehículo volverá al estado ACTIVO.")) return;
+    try {
+      await completarMantenimiento(mantId);
+      const { data } = await getVehiculo(fichaVehiculo.id);
+      setFichaVehiculo(data);
+      cargar();
+    } catch (err) {
+      alert(err.response?.data?.error || "Error al completar mantenimiento.");
     }
   };
 
@@ -158,6 +198,15 @@ export default function Vehiculos() {
       <Modal open={modalFicha} onClose={() => setModalFicha(false)} title={`Ficha — ${fichaVehiculo?.placa || ""}`} size="lg">
         {fichaVehiculo && (
           <div className="space-y-5">
+            {/* Banner EN_MANTENIMIENTO */}
+            {fichaVehiculo.estado === "EN_MANTENIMIENTO" && (
+              <div className="flex items-center gap-2 px-4 py-3 rounded-lg text-sm" style={{ backgroundColor: "var(--warning-bg)", color: "var(--warning)" }}>
+                <Wrench size={16} />
+                <span className="font-medium">Este vehículo está actualmente EN MANTENIMIENTO.</span>
+                <span>Completa el mantenimiento activo para volver a habilitarlo.</span>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {[
                 ["Placa", fichaVehiculo.placa],
@@ -195,23 +244,101 @@ export default function Vehiculos() {
               </div>
             )}
 
-            {fichaVehiculo.mantenimientos?.length > 0 && (
-              <div>
-                <h4 className="text-sm font-semibold mb-3" style={{ color: "var(--text-primary)" }}>Historial de mantenimientos</h4>
+            {/* Mantenimientos */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Mantenimientos</h4>
+                <button
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border"
+                  style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}
+                  onClick={() => { setShowFormMant(!showFormMant); setErrorMant(""); }}
+                >
+                  <Wrench size={13} /> {showFormMant ? "Cancelar" : "Registrar mantenimiento"}
+                </button>
+              </div>
+
+              {/* Formulario de nuevo mantenimiento */}
+              {showFormMant && (
+                <form onSubmit={handleCrearMantenimiento} className="p-4 rounded-lg border mb-4 space-y-3" style={{ borderColor: "var(--border)", background: "var(--surface-alt)" }}>
+                  {errorMant && (
+                    <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 border border-red-200">
+                      <AlertTriangle size={14} className="text-red-500 mt-0.5 flex-shrink-0" />
+                      <p className="text-xs text-red-700">{errorMant}</p>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Tipo</label>
+                      <select className="w-full border rounded-lg px-3 py-2 text-sm" style={{ borderColor: "var(--border)" }} value={formMant.tipo} onChange={e => setFormMant({ ...formMant, tipo: e.target.value })} required>
+                        <option value="PREVENTIVO">Preventivo (+90 días próx. revisión)</option>
+                        <option value="CORRECTIVO">Correctivo (+30 días próx. revisión)</option>
+                        <option value="REVISION">Revisión (+180 días próx. revisión)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Fecha del mantenimiento</label>
+                      <input type="date" className="w-full border rounded-lg px-3 py-2 text-sm" style={{ borderColor: "var(--border)" }} value={formMant.fecha} onChange={e => setFormMant({ ...formMant, fecha: e.target.value })} required />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Descripción</label>
+                    <input className="w-full border rounded-lg px-3 py-2 text-sm" style={{ borderColor: "var(--border)" }} value={formMant.descripcion} onChange={e => setFormMant({ ...formMant, descripcion: e.target.value })} required placeholder="Ej: Cambio de aceite y filtros" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Costo ($)</label>
+                      <input type="number" min="0" step="0.01" className="w-full border rounded-lg px-3 py-2 text-sm" style={{ borderColor: "var(--border)" }} value={formMant.costo} onChange={e => setFormMant({ ...formMant, costo: e.target.value })} placeholder="Opcional" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Taller</label>
+                      <input className="w-full border rounded-lg px-3 py-2 text-sm" style={{ borderColor: "var(--border)" }} value={formMant.taller} onChange={e => setFormMant({ ...formMant, taller: e.target.value })} placeholder="Opcional" />
+                    </div>
+                  </div>
+                  <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                    La próxima revisión se calculará automáticamente según el tipo. El vehículo pasará a estado <strong>EN MANTENIMIENTO</strong>.
+                  </p>
+                  <button type="submit" disabled={loadingMant} className="btn-primary w-full text-sm py-2">
+                    {loadingMant ? "Registrando..." : "Registrar mantenimiento"}
+                  </button>
+                </form>
+              )}
+
+              {fichaVehiculo.mantenimientos?.length > 0 ? (
                 <div className="space-y-2">
                   {fichaVehiculo.mantenimientos.map((m) => (
                     <div key={m.id} className="p-3 rounded-lg border text-sm" style={{ borderColor: "var(--border)" }}>
-                      <div className="flex justify-between">
-                        <span className="font-medium">{m.tipo} — {m.descripcion}</span>
-                        <span className="mono text-xs" style={{ color: "var(--text-muted)" }}>{fmtFecha(m.fecha)}</span>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <span className="font-medium">{m.tipo} — {m.descripcion}</span>
+                          {m.taller && <div className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>Taller: {m.taller}</div>}
+                          {m.costo != null && <div className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>Costo: ${m.costo.toLocaleString("es-CO")}</div>}
+                          {m.proximaRevision && (
+                            <div className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
+                              Próxima revisión: {fmtFecha(m.proximaRevision)}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          <span className="mono text-xs" style={{ color: "var(--text-muted)" }}>{fmtFecha(m.fecha)}</span>
+                          {/* Botón completar solo si el vehículo está EN_MANTENIMIENTO */}
+                          {fichaVehiculo.estado === "EN_MANTENIMIENTO" && (
+                            <button
+                              onClick={() => handleCompletarMantenimiento(m.id)}
+                              className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium"
+                              style={{ background: "var(--success-bg)", color: "var(--success)" }}
+                            >
+                              <CheckCircle size={12} /> Completar
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      {m.taller && <div className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>Taller: {m.taller}</div>}
-                      {m.costo && <div className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>Costo: ${m.costo.toLocaleString("es-CO")}</div>}
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
+              ) : (
+                <p className="text-sm" style={{ color: "var(--text-muted)" }}>Sin mantenimientos registrados.</p>
+              )}
+            </div>
           </div>
         )}
       </Modal>
