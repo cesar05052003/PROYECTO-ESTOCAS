@@ -2,6 +2,8 @@ const prisma = require("../../config/db");
 
 const listar = async (req, res, next) => {
   try {
+    console.log("listar - usuario:", req.user);
+    console.log("listar - rol:", req.user?.rol);
     const capacitaciones = await prisma.capacitacion.findMany({
       where: { activo: true },
       include: {
@@ -10,13 +12,16 @@ const listar = async (req, res, next) => {
       },
       orderBy: { createdAt: "desc" },
     });
+    console.log("listar - capacitaciones encontradas:", capacitaciones.length);
     const data = capacitaciones.map((c) => ({
       ...c,
       totalParticipantes: c._count.participantes,
       completados: c.participantes.filter((p) => p.aprobado).length,
     }));
+    console.log("listar - data:", data);
     res.json(data);
   } catch (err) {
+    console.error("listar - error:", err);
     next(err);
   }
 };
@@ -40,6 +45,7 @@ const participantes = async (req, res, next) => {
 const inscribir = async (req, res, next) => {
   try {
     const { usuarioId, conductorId } = req.body;
+    console.log("inscribir - usuarioId:", usuarioId, "conductorId:", conductorId, "capacitacionId:", req.params.id);
     const existente = await prisma.usuarioCapacitacion.findFirst({
       where: { usuarioId, capacitacionId: req.params.id },
     });
@@ -47,8 +53,10 @@ const inscribir = async (req, res, next) => {
     const ins = await prisma.usuarioCapacitacion.create({
       data: { usuarioId, conductorId: conductorId || null, capacitacionId: req.params.id },
     });
+    console.log("inscribir - inscripción creada:", ins);
     res.status(201).json(ins);
   } catch (err) {
+    console.error("inscribir - error:", err);
     next(err);
   }
 };
@@ -79,4 +87,162 @@ const crear = async (req, res, next) => {
   }
 };
 
-module.exports = { listar, participantes, inscribir, evaluar, crear };
+const misCapacitaciones = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    console.log("misCapacitaciones - userId:", userId);
+    console.log("misCapacitaciones - req.user:", req.user);
+    const capacitaciones = await prisma.usuarioCapacitacion.findMany({
+      where: { 
+        usuarioId: userId,
+        capacitacion: {
+          activo: true,
+        },
+      },
+      include: {
+        capacitacion: {
+          include: {
+            preguntas: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    console.log("misCapacitaciones - capacitaciones encontradas:", capacitaciones.length);
+    res.json(capacitaciones);
+  } catch (err) {
+    next(err);
+  }
+};
+
+const obtenerCapacitacion = async (req, res, next) => {
+  try {
+    console.log("obtenerCapacitacion - id:", req.params.id);
+    const capacitacion = await prisma.capacitacion.findUnique({
+      where: { id: req.params.id },
+      include: {
+        preguntas: true,
+      },
+    });
+    console.log("obtenerCapacitacion - capacitacion:", JSON.stringify(capacitacion, null, 2));
+    console.log("obtenerCapacitacion - preguntas:", capacitacion?.preguntas);
+    console.log("obtenerCapacitacion - número de preguntas:", capacitacion?.preguntas?.length);
+    if (!capacitacion) return res.status(404).json({ error: "Capacitación no encontrada" });
+    res.json(capacitacion);
+  } catch (err) {
+    console.error("obtenerCapacitacion - error:", err);
+    next(err);
+  }
+};
+
+const enviarRespuestas = async (req, res, next) => {
+  try {
+    const { usuarioCapacitacionId, respuestas } = req.body;
+    const usuarioCapacitacion = await prisma.usuarioCapacitacion.findUnique({
+      where: { id: usuarioCapacitacionId },
+      include: { capacitacion: { include: { preguntas: true } } },
+    });
+
+    if (!usuarioCapacitacion) return res.status(404).json({ error: "Inscripción no encontrada" });
+
+    let correctas = 0;
+    const preguntas = usuarioCapacitacion.capacitacion.preguntas;
+    
+    preguntas.forEach((pregunta) => {
+      const respuestaUsuario = respuestas[pregunta.id];
+      if (respuestaUsuario === pregunta.respuestaCorrecta) {
+        correctas++;
+      }
+    });
+
+    const puntaje = preguntas.length > 0 ? (correctas / preguntas.length) * 100 : 0;
+    const aprobado = puntaje >= 70;
+
+    const resultado = await prisma.usuarioCapacitacion.update({
+      where: { id: usuarioCapacitacionId },
+      data: {
+        puntaje,
+        aprobado,
+        completadoEn: new Date(),
+        intentos: usuarioCapacitacion.intentos + 1,
+      },
+    });
+
+    res.json(resultado);
+  } catch (err) {
+    next(err);
+  }
+};
+
+const agregarPregunta = async (req, res, next) => {
+  try {
+    const { capacitacionId, enunciado, opciones, respuestaCorrecta } = req.body;
+    console.log("agregarPregunta - datos:", { capacitacionId, enunciado, opciones, respuestaCorrecta });
+    const pregunta = await prisma.pregunta.create({
+      data: {
+        capacitacionId,
+        enunciado,
+        opciones: JSON.stringify(opciones),
+        respuestaCorrecta: parseInt(respuestaCorrecta),
+      },
+    });
+    console.log("agregarPregunta - pregunta creada:", pregunta);
+    res.status(201).json(pregunta);
+  } catch (err) {
+    console.error("agregarPregunta - error:", err);
+    next(err);
+  }
+};
+
+const generarCertificado = async (req, res, next) => {
+  try {
+    const { usuarioCapacitacionId } = req.params;
+    const usuarioCapacitacion = await prisma.usuarioCapacitacion.findUnique({
+      where: { id: usuarioCapacitacionId },
+      include: {
+        usuario: true,
+        capacitacion: true,
+      },
+    });
+
+    if (!usuarioCapacitacion) return res.status(404).json({ error: "Inscripción no encontrada" });
+    if (!usuarioCapacitacion.aprobado) return res.status(400).json({ error: "El usuario no ha aprobado la capacitación" });
+
+    const certificadoUrl = `https://certificados.pesv-digital.com/${usuarioCapacitacion.id}.pdf`;
+    
+    const actualizado = await prisma.usuarioCapacitacion.update({
+      where: { id: usuarioCapacitacionId },
+      data: { certificadoUrl },
+    });
+
+    res.json({ certificadoUrl, usuarioCapacitacion: actualizado });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const eliminarCapacitacion = async (req, res, next) => {
+  try {
+    await prisma.capacitacion.update({
+      where: { id: req.params.id },
+      data: { activo: false },
+    });
+    res.json({ message: "Capacitación eliminada" });
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { 
+  listar, 
+  participantes, 
+  inscribir, 
+  evaluar, 
+  crear,
+  misCapacitaciones,
+  obtenerCapacitacion,
+  enviarRespuestas,
+  agregarPregunta,
+  generarCertificado,
+  eliminarCapacitacion
+};

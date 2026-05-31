@@ -38,16 +38,16 @@ async function main() {
   const hash = (pwd) => bcrypt.hashSync(pwd, 10);
 
   const admin = await prisma.usuario.create({
-    data: { nombre: "Administrador PESV", email: "admin@pesv.co", password: hash("admin123"), rol: "ADMIN" },
+    data: { nombre: "Administrador PESV", email: "admin@pesv.co", password: hash("admin123"), rol: "ADMINISTRADOR" },
   });
   const lider = await prisma.usuario.create({
-    data: { nombre: "María Rodríguez", email: "lider@pesv.co", password: hash("lider123"), rol: "LIDER_PESV" },
+    data: { nombre: "María Rodríguez", email: "lider@pesv.co", password: hash("lider123"), rol: "LIDER" },
   });
   const gerente = await prisma.usuario.create({
     data: { nombre: "Carlos Jiménez", email: "gerente@pesv.co", password: hash("gerente123"), rol: "GERENTE" },
   });
   const miembroComite = await prisma.usuario.create({
-    data: { nombre: "Laura Pérez", email: "comite@pesv.co", password: hash("comite123"), rol: "MIEMBRO_COMITE" },
+    data: { nombre: "Laura Pérez", email: "comite@pesv.co", password: hash("comite123"), rol: "LIDER" },
   });
   const cond1 = await prisma.usuario.create({
     data: { nombre: "Carlos Martínez", email: "c1@pesv.co", password: hash("cond123"), rol: "CONDUCTOR" },

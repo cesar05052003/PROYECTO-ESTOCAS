@@ -1,6 +1,12 @@
 import api from "./api";
 export const getCapacitaciones = () => api.get("/capacitaciones");
+export const getMisCapacitaciones = () => api.get("/capacitaciones/mis-capacitaciones");
+export const getCapacitacionById = (id) => api.get(`/capacitaciones/${id}`);
 export const getParticipantes = (id) => api.get(`/capacitaciones/${id}/participantes`);
 export const inscribir = (id, data) => api.post(`/capacitaciones/${id}/inscribir`, data);
 export const evaluar = (id, data) => api.post(`/capacitaciones/${id}/evaluar`, data);
 export const crearCapacitacion = (data) => api.post("/capacitaciones", data);
+export const enviarRespuestas = (data) => api.post("/capacitaciones/enviar-respuestas", data);
+export const agregarPregunta = (data) => api.post("/capacitaciones/preguntas", data);
+export const generarCertificado = (usuarioCapacitacionId) => api.post(`/capacitaciones/certificado/${usuarioCapacitacionId}`);
+export const eliminarCapacitacion = (id) => api.delete(`/capacitaciones/${id}`);

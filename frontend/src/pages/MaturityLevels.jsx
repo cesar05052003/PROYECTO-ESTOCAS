@@ -19,6 +19,7 @@ export default function MaturityLevels() {
   }, []);
 
   React.useEffect(() => {
+    console.log('modalLevel cambió:', modalLevel);
     if (modalLevel) {
       document.body.style.overflow = 'hidden';
     } else {
@@ -181,7 +182,10 @@ export default function MaturityLevels() {
                     </p>
                   </button>
                   <button
-                    onClick={() => setModalLevel(level)}
+                    onClick={() => {
+                      console.log('Botón clickeado, nivel:', level);
+                      setModalLevel(level);
+                    }}
                     className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-semibold"
                   >
                     <Info className="w-4 h-4" />
@@ -268,12 +272,11 @@ export default function MaturityLevels() {
       {/* Modal Moderno */}
       {modalLevel && (
         <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity duration-200"
           onClick={() => setModalLevel(null)}
         >
           <div
-            className="bg-white rounded-2xl flex flex-col max-h-[90vh] w-full max-w-2xl shadow-2xl animate-scale-in"
-            style={{ animationDuration: '0.3s' }}
+            className="bg-white rounded-2xl flex flex-col max-h-[90vh] w-full max-w-2xl shadow-2xl transition-all duration-300"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -432,34 +435,6 @@ export default function MaturityLevels() {
           </div>
         </div>
       )}
-
-      {/* Estilos CSS para animaciones */}
-      <style jsx>{`
-        @keyframes fade-in {
-          from {
-            opacity: 0;
-          }
-          to {
-            opacity: 1;
-          }
-        }
-        @keyframes scale-in {
-          from {
-            opacity: 0;
-            transform: scale(0.95);
-          }
-          to {
-            opacity: 1;
-            transform: scale(1);
-          }
-        }
-        .animate-fade-in {
-          animation: fade-in 0.2s ease-out;
-        }
-        .animate-scale-in {
-          animation: scale-in 0.3s ease-out;
-        }
-      `}</style>
 
       <Footer />
     </div>

@@ -30,6 +30,7 @@ const gruposCompletos = [
       { to: "/desplazamientos", icon: Route, label: "Desplazamientos" },
       { to: "/vehiculos", icon: Truck, label: "Vehículos" },
       { to: "/conductores", icon: Users, label: "Conductores" },
+      { to: "/usuarios", icon: Shield, label: "Usuarios" },
     ],
   },
   {
@@ -53,7 +54,7 @@ const gruposCompletos = [
   },
 ];
 
-const rolLabels = { ADMIN: "Administrador", LIDER_PESV: "Líder PESV", GERENTE: "Gerente", CONDUCTOR: "Conductor", MIEMBRO_COMITE: "Miembro Comité" };
+const rolLabels = { ADMINISTRADOR: "Administrador", LIDER: "Líder PESV", GERENTE: "Gerente", CONDUCTOR: "Conductor" };
 
 export default function Sidebar({ isOpen, onClose }) {
   const user = useAuthStore((s) => s.user);
@@ -87,6 +88,17 @@ export default function Sidebar({ isOpen, onClose }) {
     return gruposCompletos;
   };
 
+  const getFilteredGrupos = () => {
+    const grupos = getVisibleGrupos();
+    if (!isAdmin()) {
+      return grupos.map(grupo => ({
+        ...grupo,
+        items: grupo.items.filter(item => item.to !== "/usuarios")
+      }));
+    }
+    return grupos;
+  };
+
   const handleLogout = () => {
     logout();
     navigate("/login");
@@ -118,7 +130,7 @@ export default function Sidebar({ isOpen, onClose }) {
 
         {/* Navegación */}
         <nav className="flex-1 overflow-y-auto py-4 px-3">
-          {getVisibleGrupos().map((grupo, gi) => (
+          {getFilteredGrupos().map((grupo, gi) => (
             <div key={gi} className="mb-4">
               {grupo.label && (
                 <div

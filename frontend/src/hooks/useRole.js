@@ -5,12 +5,13 @@ export const useRole = () => {
   const rol = user?.rol || null;
 
   return {
-    isAdmin: () => rol === "ADMIN",
-    isLider: () => rol === "LIDER_PESV",
+    isAdmin: () => rol === "ADMINISTRADOR",
+    isLider: () => rol === "LIDER",
     isGerente: () => rol === "GERENTE",
     isConductor: () => rol === "CONDUCTOR",
-    canEdit: () => rol === "ADMIN" || rol === "LIDER_PESV",
-    canDelete: () => rol === "ADMIN" || rol === "LIDER_PESV",
+    canEdit: () => rol === "ADMINISTRADOR" || rol === "LIDER",
+    canDelete: () => rol === "ADMINISTRADOR" || rol === "LIDER",
+    canManageUsers: () => rol === "ADMINISTRADOR",
     rol,
   };
 };

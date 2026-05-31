@@ -8,6 +8,7 @@ import Riesgos from "./pages/Riesgos";
 import Capacitaciones from "./pages/Capacitaciones";
 import Vehiculos from "./pages/Vehiculos";
 import Conductores from "./pages/Conductores";
+import Usuarios from "./pages/Usuarios";
 import Incidentes from "./pages/Incidentes";
 import AsistenteIA from "./pages/AsistenteIA";
 import Comite from "./pages/Comite";
@@ -40,6 +41,7 @@ export default function App() {
           <Route path="/desplazamientos" element={<Desplazamientos />} />
           <Route path="/vehiculos" element={<Vehiculos />} />
           <Route path="/conductores" element={<Conductores />} />
+          <Route path="/usuarios" element={<Usuarios />} />
           {/* Seguimiento */}
           <Route path="/reportes" element={<Reportes />} />
           <Route path="/auditoria" element={<Auditoria />} />

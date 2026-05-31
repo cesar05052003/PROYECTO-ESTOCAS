@@ -1,9 +1,15 @@
 import { useState, useEffect, useCallback } from "react";
-import { Clock, Users, CheckCircle, Award, ChevronDown } from "lucide-react";
+import { Clock, Users, CheckCircle, Award, ChevronDown, Plus, UserPlus } from "lucide-react";
 import Header from "../components/layout/Header";
 import Modal from "../components/ui/Modal";
 import StatusBadge from "../components/ui/StatusBadge";
-import { getCapacitaciones, getParticipantes } from "../services/capacitaciones.service";
+import { getCapacitaciones, getParticipantes, eliminarCapacitacion } from "../services/capacitaciones.service";
+import CrearCapacitacion from "../components/capacitaciones/CrearCapacitacion";
+import InscribirUsuarios from "../components/capacitaciones/InscribirUsuarios";
+import MisCapacitaciones from "../components/capacitaciones/MisCapacitaciones";
+import RealizarCapacitacion from "../components/capacitaciones/RealizarCapacitacion";
+import VerCertificado from "../components/capacitaciones/VerCertificado";
+import useAuthStore from "../store/authStore";
 
 const fmtFecha = (d) => d ? new Date(d).toLocaleDateString("es-CO") : "—";
 const estadoParticipante = (p) => {
@@ -18,12 +24,23 @@ const estadoColors = {
 };
 
 export default function Capacitaciones() {
+  const user = useAuthStore((s) => s.user);
+  const isAdmin = user?.rol === "ADMIN";
+  const isGerente = user?.rol === "GERENTE";
+  const canManage = isAdmin || isGerente;
+  const [vista, setVista] = useState(canManage ? "admin" : "mis");
   const [capacitaciones, setCapacitaciones] = useState([]);
   const [loading, setLoading] = useState(true);
   const [seleccionada, setSeleccionada] = useState(null);
   const [participantes, setParticipantes] = useState([]);
   const [loadingPart, setLoadingPart] = useState(false);
   const [modalPart, setModalPart] = useState(false);
+  const [modalCrear, setModalCrear] = useState(false);
+  const [modalInscribir, setModalInscribir] = useState(false);
+  const [modalRealizar, setModalRealizar] = useState(false);
+  const [modalCertificado, setModalCertificado] = useState(false);
+  const [usuarioCapacitacionSeleccionada, setUsuarioCapacitacionSeleccionada] = useState(null);
+  const [misCapKey, setMisCapKey] = useState(0);
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -49,82 +66,194 @@ export default function Capacitaciones() {
     }
   };
 
+  const handleRealizarCapacitacion = (uc) => {
+    setUsuarioCapacitacionSeleccionada(uc);
+    setModalRealizar(true);
+  };
+
+  const handleCompletadoCapacitacion = () => {
+    if (vista === "mis") {
+      setMisCapKey(prev => prev + 1);
+    } else {
+      cargar();
+    }
+  };
+
+  const handleVerCertificado = (uc) => {
+    setUsuarioCapacitacionSeleccionada(uc);
+    setModalCertificado(true);
+  };
+
+  const handleEliminarCapacitacion = async (id) => {
+    if (window.confirm("¿Estás seguro de eliminar esta capacitación?")) {
+      try {
+        await eliminarCapacitacion(id);
+        cargar();
+      } catch (err) {
+        console.error("Error al eliminar capacitación:", err);
+      }
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
       <Header title="Capacitaciones PESV" subtitle="Programa de formación continua — Pasos 15-18 Resolución 40595" />
 
       <div className="flex-1 overflow-y-auto p-6">
-        {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="bg-white rounded-xl p-5 pulse" style={{ boxShadow: "var(--shadow)" }}>
-                <div className="h-4 bg-gray-200 rounded mb-3 w-3/4" />
-                <div className="h-3 bg-gray-100 rounded mb-2" />
-                <div className="h-3 bg-gray-100 rounded w-2/3" />
-              </div>
-            ))}
+        {/* Tabs de navegación */}
+        {canManage && (
+          <div className="flex gap-2 mb-6">
+            <button
+              onClick={() => setVista("admin")}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                vista === "admin"
+                  ? "text-white"
+                  : "border"
+              }`}
+              style={
+                vista === "admin"
+                  ? { backgroundColor: "#1B6CA8" }
+                  : { borderColor: "#D1D5DB", backgroundColor: "#F3F4F6", color: "#374151" }
+              }
+            >
+              Gestión de Capacitaciones
+            </button>
+            <button
+              onClick={() => setVista("mis")}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                vista === "mis"
+                  ? "text-white"
+                  : "border"
+              }`}
+              style={
+                vista === "mis"
+                  ? { backgroundColor: "#1B6CA8" }
+                  : { borderColor: "#D1D5DB", backgroundColor: "#F3F4F6", color: "#374151" }
+              }
+            >
+              Mis Capacitaciones
+            </button>
           </div>
+        )}
+
+        {/* Vista de Mis Capacitaciones */}
+        {vista === "mis" ? (
+          <MisCapacitaciones
+            key={misCapKey}
+            onRealizarCapacitacion={handleRealizarCapacitacion}
+            onVerCertificado={handleVerCertificado}
+          />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {capacitaciones.map((cap) => {
-              const pct = cap.totalParticipantes > 0 ? Math.round((cap.completados / cap.totalParticipantes) * 100) : 0;
-              return (
-                <div key={cap.id} className="bg-white rounded-xl p-5 flex flex-col" style={{ boxShadow: "var(--shadow)" }}>
-                  {/* Header card */}
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-semibold leading-tight" style={{ color: "var(--text-primary)" }}>{cap.titulo}</h3>
-                      <p className="text-xs mt-1 line-clamp-2" style={{ color: "var(--text-muted)" }}>{cap.descripcion}</p>
-                    </div>
-                    {cap.obligatoria && (
-                      <span className="ml-2 flex-shrink-0 text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: "var(--info-bg)", color: "var(--info)" }}>
-                        Obligatorio
-                      </span>
-                    )}
-                  </div>
+          <>
+            {/* Botones de acción para admin y gerente */}
+            {isAdmin && (
+              <div className="flex gap-3 mb-6">
+                <button
+                  onClick={() => setModalCrear(true)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white"
+                  style={{ backgroundColor: "#1B6CA8" }}
+                >
+                  <Plus size={16} />
+                  Crear Capacitación
+                </button>
+                <button
+                  onClick={() => setModalInscribir(true)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border"
+                  style={{ 
+                    borderColor: "#D1D5DB", 
+                    backgroundColor: "#F3F4F6",
+                    color: "#374151"
+                  }}
+                >
+                  <UserPlus size={16} />
+                  Inscribir Usuarios
+                </button>
+              </div>
+            )}
 
-                  {/* Meta */}
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="flex items-center gap-1.5 text-xs" style={{ color: "var(--text-muted)" }}>
-                      <Clock size={12} />
-                      {cap.duracion} min
-                    </div>
-                    <div className="flex items-center gap-1.5 text-xs" style={{ color: "var(--text-muted)" }}>
-                      <Users size={12} />
-                      {cap.totalParticipantes} inscritos
-                    </div>
-                    <div className="flex items-center gap-1.5 text-xs" style={{ color: "var(--success)" }}>
-                      <CheckCircle size={12} />
-                      {cap.completados} aprobados
-                    </div>
+            {loading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="bg-white rounded-xl p-5 pulse" style={{ boxShadow: "var(--shadow)" }}>
+                    <div className="h-4 bg-gray-200 rounded mb-3 w-3/4" />
+                    <div className="h-3 bg-gray-100 rounded mb-2" />
+                    <div className="h-3 bg-gray-100 rounded w-2/3" />
                   </div>
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {capacitaciones.map((cap) => {
+                  const pct = cap.totalParticipantes > 0 ? Math.round((cap.completados / cap.totalParticipantes) * 100) : 0;
+                  return (
+                    <div key={cap.id} className="bg-white rounded-xl p-5 flex flex-col" style={{ boxShadow: "var(--shadow)" }}>
+                      {/* Header card */}
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-sm font-semibold leading-tight" style={{ color: "var(--text-primary)" }}>{cap.titulo}</h3>
+                          <p className="text-xs mt-1 line-clamp-2" style={{ color: "var(--text-muted)" }}>{cap.descripcion}</p>
+                        </div>
+                        {cap.obligatoria && (
+                          <span className="ml-2 flex-shrink-0 text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: "var(--info-bg)", color: "var(--info)" }}>
+                            Obligatorio
+                          </span>
+                        )}
+                      </div>
 
-                  {/* Progreso */}
-                  <div className="mb-4">
-                    <div className="flex justify-between text-xs mb-1">
-                      <span style={{ color: "var(--text-muted)" }}>Progreso general</span>
-                      <span className="font-medium mono" style={{ color: "var(--text-primary)" }}>{pct}%</span>
-                    </div>
-                    <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: "#F3F4F6" }}>
-                      <div
-                        className="h-full rounded-full"
-                        style={{ width: `${pct}%`, backgroundColor: pct >= 80 ? "#166534" : pct >= 50 ? "#92400E" : "#1B6CA8" }}
-                      />
-                    </div>
-                  </div>
+                      {/* Meta */}
+                      <div className="flex items-center gap-4 mb-4">
+                        <div className="flex items-center gap-1.5 text-xs" style={{ color: "var(--text-muted)" }}>
+                          <Clock size={12} />
+                          {cap.duracion} min
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs" style={{ color: "var(--text-muted)" }}>
+                          <Users size={12} />
+                          {cap.totalParticipantes} inscritos
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs" style={{ color: "var(--success)" }}>
+                          <CheckCircle size={12} />
+                          {cap.completados} aprobados
+                        </div>
+                      </div>
 
-                  <button
-                    onClick={() => handleVerParticipantes(cap)}
-                    className="mt-auto flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium border transition-colors hover:bg-gray-50"
-                    style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}
-                  >
-                    <Users size={14} />
-                    Ver participantes
-                  </button>
-                </div>
-              );
-            })}
-          </div>
+                      {/* Progreso */}
+                      <div className="mb-4">
+                        <div className="flex justify-between text-xs mb-1">
+                          <span style={{ color: "var(--text-muted)" }}>Progreso general</span>
+                          <span className="font-medium mono" style={{ color: "var(--text-primary)" }}>{pct}%</span>
+                        </div>
+                        <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: "#F3F4F6" }}>
+                          <div
+                            className="h-full rounded-full"
+                            style={{ width: `${pct}%`, backgroundColor: pct >= 80 ? "#166534" : pct >= 50 ? "#92400E" : "#1B6CA8" }}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 mt-auto">
+                        <button
+                          onClick={() => handleVerParticipantes(cap)}
+                          className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium border transition-colors hover:bg-gray-50"
+                          style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}
+                        >
+                          <Users size={14} />
+                          Ver participantes
+                        </button>
+                        {isAdmin && (
+                          <button
+                            onClick={() => handleEliminarCapacitacion(cap.id)}
+                            className="px-3 py-2 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 border border-red-200"
+                          >
+                            Eliminar
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -190,6 +319,42 @@ export default function Capacitaciones() {
           </div>
         )}
       </Modal>
+
+      {/* Modal crear capacitación */}
+      <CrearCapacitacion
+        open={modalCrear}
+        onClose={() => setModalCrear(false)}
+        onSuccess={() => {
+          cargar();
+          setModalCrear(false);
+        }}
+      />
+
+      {/* Modal inscribir usuarios */}
+      <InscribirUsuarios
+        open={modalInscribir}
+        onClose={() => setModalInscribir(false)}
+        capacitacion={null}
+        onSuccess={() => {
+          cargar();
+          setModalInscribir(false);
+        }}
+      />
+
+      {/* Modal realizar capacitación */}
+      <RealizarCapacitacion
+        open={modalRealizar}
+        onClose={() => setModalRealizar(false)}
+        usuarioCapacitacion={usuarioCapacitacionSeleccionada}
+        onCompletado={handleCompletadoCapacitacion}
+      />
+
+      {/* Modal ver certificado */}
+      <VerCertificado
+        open={modalCertificado}
+        onClose={() => setModalCertificado(false)}
+        usuarioCapacitacion={usuarioCapacitacionSeleccionada}
+      />
     </div>
   );
 }
