@@ -1,8 +1,9 @@
 const { Router } = require("express");
-const { listar, crear, obtener, actualizar } = require("./diagnostico.controller");
+const { listar, crear, obtener, actualizar, nivelMadurez } = require("./diagnostico.controller");
 const { verifyToken } = require("../../middlewares/auth.middleware");
 const router = Router();
 router.use(verifyToken);
+router.get("/nivel-madurez", nivelMadurez);
 router.get("/", listar);
 router.post("/", crear);
 router.get("/:id", obtener);

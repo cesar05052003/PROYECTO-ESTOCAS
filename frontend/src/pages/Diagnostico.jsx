@@ -1,17 +1,34 @@
 import { useState, useEffect } from "react";
-import { Search, Plus, FileSearch } from "lucide-react";
+import { Plus, FileSearch, CheckCircle2, XCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { getDiagnosticos, crearDiagnostico } from "../services/diagnostico.service";
+import api from "../services/api";
 import Modal from "../components/ui/Modal";
 import EmptyState from "../components/ui/EmptyState";
+
+const NIVEL_CONFIG = {
+  AVANZADO:   { label: "Nivel Avanzado",   color: "#4F46E5", bg: "#EEF2FF" },
+  ESTANDAR:   { label: "Nivel Estándar",   color: "#0891B2", bg: "#ECFEFF" },
+  BASICO:     { label: "Nivel Básico",     color: "#166534", bg: "#F0FDF4" },
+  EN_PROCESO: { label: "En Proceso",       color: "#92400E", bg: "#FFFBEB" },
+};
 
 export default function Diagnostico() {
   const [diagnosticos, setDiagnosticos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ anio: new Date().getFullYear(), descripcion: "", hallazgos: "", conclusiones: "" });
+  const [madurez, setMadurez] = useState(null);
+  const [expandido, setExpandido] = useState(null);
 
   const cargar = async () => {
-    try { const { data } = await getDiagnosticos(); setDiagnosticos(data); } catch (e) { console.error(e); }
+    try {
+      const [diag, mad] = await Promise.all([
+        getDiagnosticos(),
+        api.get("/diagnostico/nivel-madurez"),
+      ]);
+      setDiagnosticos(diag.data);
+      setMadurez(mad.data);
+    } catch (e) { console.error(e); }
     setLoading(false);
   };
 
@@ -27,6 +44,8 @@ export default function Diagnostico() {
     } catch (e) { alert("Error al crear diagnóstico"); }
   };
 
+  const cfg = madurez ? NIVEL_CONFIG[madurez.nivel] : null;
+
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
@@ -36,6 +55,72 @@ export default function Diagnostico() {
         </div>
         <button className="btn-primary flex items-center gap-2" onClick={() => setShowModal(true)}><Plus size={16} /> Nuevo Diagnóstico</button>
       </div>
+
+      {/* Panel de Nivel de Madurez calculado automáticamente */}
+      {madurez && (
+        <div className="rounded-xl border p-6 mb-8" style={{ borderColor: cfg.color, backgroundColor: cfg.bg }}>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <div className="flex items-center gap-3">
+                <span className="text-2xl font-bold" style={{ color: cfg.color }}>{cfg.label}</span>
+                <span className="text-sm px-3 py-1 rounded-full font-semibold" style={{ backgroundColor: cfg.color, color: "#fff" }}>
+                  Calculado automáticamente
+                </span>
+              </div>
+              <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
+                Basado en los módulos con datos reales registrados en el sistema · Res. 40595 de 2022
+              </p>
+            </div>
+          </div>
+
+          {/* Barras de progreso por nivel */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[
+              { key: "basicos", label: "Básico (18 pasos)", color: "#166534" },
+              { key: "estandar", label: "Estándar (+4 pasos)", color: "#0891B2" },
+              { key: "avanzado", label: "Avanzado (+2 pasos)", color: "#4F46E5" },
+            ].map(({ key, label, color }) => {
+              const d = madurez[key];
+              return (
+                <div key={key}>
+                  <div className="flex justify-between text-xs mb-1">
+                    <button
+                      onClick={() => setExpandido(expandido === key ? null : key)}
+                      className="flex items-center gap-1 font-medium hover:underline"
+                      style={{ color }}
+                    >
+                      {label}
+                      {expandido === key ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                    </button>
+                    <span className="mono font-semibold" style={{ color }}>{d.completados}/{d.total}</span>
+                  </div>
+                  <div className="h-2.5 rounded-full overflow-hidden" style={{ backgroundColor: "#E5E7EB" }}>
+                    <div className="h-full rounded-full transition-all" style={{ width: `${d.porcentaje}%`, backgroundColor: color }} />
+                  </div>
+
+                  {/* Lista expandible de pasos */}
+                  {expandido === key && (
+                    <div className="mt-3 space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                      {d.pasos.map((p) => (
+                        <div key={p.paso} className="flex items-start gap-2 text-xs">
+                          {p.ok
+                            ? <CheckCircle2 size={13} style={{ color: "#166534", flexShrink: 0, marginTop: 1 }} />
+                            : <XCircle size={13} style={{ color: "#991B1B", flexShrink: 0, marginTop: 1 }} />
+                          }
+                          <span style={{ color: p.ok ? "var(--text-primary)" : "#991B1B" }}>
+                            <span className="font-semibold">P{p.paso}.</span> {p.label}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
 
       {loading ? (
         <div className="text-center py-12" style={{ color: "var(--text-muted)" }}>Cargando...</div>

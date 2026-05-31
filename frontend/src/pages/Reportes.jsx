@@ -11,6 +11,7 @@ export default function Reportes() {
   const [loading, setLoading] = useState(true);
   const [generando, setGenerando] = useState(false);
   const [selected, setSelected] = useState(null);
+  const [diasLaborables, setDiasLaborables] = useState(22);
 
   const cargar = async () => {
     try { const { data } = await getReportes(); setReportes(data); } catch (e) { console.error(e); }
@@ -22,7 +23,7 @@ export default function Reportes() {
   const handleGenerar = async () => {
     setGenerando(true);
     try {
-      await generarReporte({ anio: new Date().getFullYear(), mes: new Date().getMonth() + 1 });
+      await generarReporte({ anio: new Date().getFullYear(), mes: new Date().getMonth() + 1, diasLaborables });
       cargar();
     } catch (e) { alert("Error al generar reporte"); }
     setGenerando(false);
@@ -49,9 +50,23 @@ export default function Reportes() {
           <h1 className="text-2xl font-semibold" style={{ color: "var(--text-primary)" }}>Reportes de Autogestión</h1>
           <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>Paso 20 — Indicadores y reporte PESV para el SISI</p>
         </div>
-        <button className="btn-primary flex items-center gap-2" onClick={handleGenerar} disabled={generando}>
-          <Plus size={16} /> {generando ? "Generando..." : "Generar Reporte Mes Actual"}
-        </button>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>Días lab./mes:</label>
+            <input
+              type="number"
+              min={1}
+              max={31}
+              value={diasLaborables}
+              onChange={(e) => setDiasLaborables(parseInt(e.target.value) || 22)}
+              className="w-16 px-2 py-1.5 rounded-lg border text-sm text-center"
+              style={{ borderColor: "var(--border)", backgroundColor: "var(--bg-input)" }}
+            />
+          </div>
+          <button className="btn-primary flex items-center gap-2" onClick={handleGenerar} disabled={generando}>
+            <Plus size={16} /> {generando ? "Generando..." : "Generar Reporte Mes Actual"}
+          </button>
+        </div>
       </div>
 
       {loading ? (

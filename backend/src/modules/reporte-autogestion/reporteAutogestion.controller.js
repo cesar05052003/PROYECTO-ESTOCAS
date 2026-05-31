@@ -47,7 +47,7 @@ const generar = async (req, res, next) => {
     const accidentes = incidentes.filter((i) => i.tipo.startsWith("ACCIDENTE")).length;
     const excesoVelocidad = incidentes.filter((i) => i.tipo.toUpperCase().includes("VELOCIDAD")).length;
     const jornadaExcedida = incidentes.filter((i) => i.tipo.toUpperCase().includes("JORNADA")).length;
-    const diasTrabajados = 22;
+    const diasTrabajados = req.body.diasLaborables ? parseInt(req.body.diasLaborables) : 22;
 
     const indCapacitaciones = totalConductores > 0 ? parseFloat(((capacitados.length / totalConductores) * 100).toFixed(1)) : 0;
     const indMantenimiento = totalVehiculos > 0 ? parseFloat(((vehiculosMantenidos / totalVehiculos) * 100).toFixed(1)) : 0;

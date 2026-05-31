@@ -114,6 +114,32 @@ const crear = async (req, res, next) => {
 const actualizar = async (req, res, next) => {
   try {
     const { tipo, descripcion, fecha, lugar, municipio, estado, severidad, investigacion, lesionados, muertos, costoEstimado } = req.body;
+
+    const actual = await prisma.incidente.findUnique({
+      where: { id: req.params.id },
+      include: { _count: { select: { accionesCorrectivas: true } } },
+    });
+    if (!actual) return res.status(404).json({ error: "Incidente no encontrado" });
+
+    if (estado === "CERRADO") {
+      const textoInvestigacion = investigacion ?? actual.investigacion;
+      if (!textoInvestigacion || textoInvestigacion.trim().length < 10) {
+        return res.status(400).json({
+          error: "No se puede cerrar el incidente sin una investigación documentada. Usa el botón de IA para generarla.",
+        });
+      }
+      if (actual._count.accionesCorrectivas === 0) {
+        return res.status(400).json({
+          error: "No se puede cerrar el incidente sin al menos una acción correctiva registrada.",
+        });
+      }
+    }
+
+    // Si se agrega investigación y el incidente sigue REPORTADO → avanzar automáticamente
+    const nuevoEstado = estado ?? (
+      investigacion && actual.estado === "REPORTADO" ? "EN_INVESTIGACION" : undefined
+    );
+
     const incidente = await prisma.incidente.update({
       where: { id: req.params.id },
       data: {
@@ -122,7 +148,7 @@ const actualizar = async (req, res, next) => {
         ...(fecha && { fecha: new Date(fecha) }),
         ...(lugar && { lugar }),
         ...(municipio !== undefined && { municipio }),
-        ...(estado && { estado }),
+        ...(nuevoEstado && { estado: nuevoEstado }),
         ...(severidad && { severidad }),
         ...(investigacion !== undefined && { investigacion }),
         ...(lesionados !== undefined && { lesionados: parseInt(lesionados) }),

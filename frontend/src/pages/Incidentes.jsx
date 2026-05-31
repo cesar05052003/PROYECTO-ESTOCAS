@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Search, Zap, AlertCircle, Calendar, ShieldOff } from "lucide-react";
+import { Plus, Zap, AlertCircle, Calendar, ShieldOff, CheckCircle2, Lock } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import Header from "../components/layout/Header";
 import DataTable from "../components/ui/DataTable";
@@ -29,6 +29,7 @@ export default function Incidentes() {
   const [loading, setLoading] = useState(true);
   const [modalNuevo, setModalNuevo] = useState(false);
   const [iaLoading, setIaLoading] = useState(null);
+  const [cerrando, setCerrando] = useState(null);
   const [iaModal, setIaModal] = useState(false);
   const [iaContenido, setIaContenido] = useState("");
   const [form, setForm] = useState({ tipo: "ACCIDENTE_SOLO_DANOS", descripcion: "", fecha: "", lugar: "", municipio: "Montería", vehiculoId: "", conductorId: "", lesionados: 0, muertos: 0, costoEstimado: "", severidad: "MODERADO" });
@@ -64,6 +65,19 @@ export default function Incidentes() {
       alert("Error al generar investigación. Verifica tu clave API.");
     } finally {
       setIaLoading(null);
+    }
+  };
+
+  const handleCerrar = async (incidenteId) => {
+    if (!window.confirm("¿Confirmar cierre del incidente? Asegúrese de que la investigación y las acciones correctivas estén registradas.")) return;
+    setCerrando(incidenteId);
+    try {
+      await actualizarIncidente(incidenteId, { estado: "CERRADO" });
+      cargar();
+    } catch (err) {
+      alert(err.response?.data?.error || "No se puede cerrar el incidente. Verifique que tenga investigación y acciones correctivas.");
+    } finally {
+      setCerrando(null);
     }
   };
 
@@ -116,17 +130,39 @@ export default function Incidentes() {
     { key: "estado", title: "Estado", render: (v) => <StatusBadge status={v} size="xs" /> },
     ...(isAdmin() || isLider()
       ? [{
-        key: "acciones", title: "Investigar",
-        render: (_, row) => (
-          row.estado !== "CERRADO" ? (
-            <ClaudeButton
-              onClick={() => handleInvestigar(row.id)}
-              loading={iaLoading === row.id}
-              label="IA"
-              className="text-xs px-2 py-1"
-            />
-          ) : <span className="text-xs" style={{ color: "var(--text-muted)" }}>Cerrado</span>
-        ),
+        key: "acciones", title: "Acciones",
+        render: (_, row) => {
+          if (row.estado === "CERRADO") {
+            return (
+              <div className="flex items-center gap-1 text-xs" style={{ color: "var(--success)" }}>
+                <Lock size={12} /> Cerrado
+              </div>
+            );
+          }
+          return (
+            <div className="flex items-center gap-2">
+              <ClaudeButton
+                onClick={() => handleInvestigar(row.id)}
+                loading={iaLoading === row.id}
+                label="IA"
+                className="text-xs px-2 py-1"
+                title="Generar investigación con IA"
+              />
+              {row.estado === "EN_INVESTIGACION" && (
+                <button
+                  onClick={() => handleCerrar(row.id)}
+                  disabled={cerrando === row.id}
+                  title="Cerrar incidente (requiere investigación + acciones correctivas)"
+                  className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium border transition-colors hover:bg-green-50"
+                  style={{ borderColor: "#166534", color: "#166534" }}
+                >
+                  <CheckCircle2 size={12} />
+                  {cerrando === row.id ? "..." : "Cerrar"}
+                </button>
+              )}
+            </div>
+          );
+        },
       }]
       : []),
   ];
