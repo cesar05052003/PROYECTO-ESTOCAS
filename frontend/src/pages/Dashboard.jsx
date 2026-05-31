@@ -104,38 +104,46 @@ export default function Dashboard() {
       />
 
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
-        {/* KPIs */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <KpiCard
-            icon={Users}
-            value={kpis ? `${kpis.conductoresActivos}/${kpis.totalConductores}` : null}
-            label="Conductores activos"
-            accentColor="#166534"
-            loading={loading}
-          />
-          <KpiCard
-            icon={Truck}
-            value={kpis ? `${kpis.vehiculosOperativos}/${kpis.totalVehiculos}` : null}
-            label="Vehículos operativos"
-            accentColor="var(--accent)"
-            loading={loading}
-          />
-          <KpiCard
-            icon={ClipboardList}
-            value={kpis?.incidentesMes ?? null}
-            label="Incidentes este mes"
-            trend={kpis?.tendenciaIncidentes}
-            trendLabel={kpis ? (kpis.tendenciaIncidentes === 0 ? "Igual al mes anterior" : `${Math.abs(kpis.tendenciaIncidentes)} vs mes anterior`) : ""}
-            accentColor="var(--danger)"
-            loading={loading}
-          />
-          <KpiCard
-            icon={CheckSquare}
-            value={kpis ? `${kpis.cumplimiento}%` : null}
-            label="Cumplimiento PESV"
-            accentColor={kpis?.cumplimiento >= 80 ? "#166534" : kpis?.cumplimiento >= 60 ? "#92400E" : "#991B1B"}
-            loading={loading}
-          />
+        {/* KPIs — Paso 20 Resolución 40595 */}
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: "#EFF6FF", color: "#1B6CA8" }}>
+              Paso 20 · Res. 40595 de 2022
+            </span>
+            <span className="text-xs" style={{ color: "var(--text-muted)" }}>Indicadores de gestión del PESV</span>
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <KpiCard
+              icon={Users}
+              value={kpis ? `${kpis.conductoresActivos}/${kpis.totalConductores}` : null}
+              label="Conductores activos"
+              accentColor="#166534"
+              loading={loading}
+            />
+            <KpiCard
+              icon={Truck}
+              value={kpis ? `${kpis.vehiculosOperativos}/${kpis.totalVehiculos}` : null}
+              label="Vehículos operativos"
+              accentColor="var(--accent)"
+              loading={loading}
+            />
+            <KpiCard
+              icon={ClipboardList}
+              value={kpis?.incidentesMes ?? null}
+              label="Incidentes este mes"
+              trend={kpis?.tendenciaIncidentes}
+              trendLabel={kpis ? (kpis.tendenciaIncidentes === 0 ? "Igual al mes anterior" : `${Math.abs(kpis.tendenciaIncidentes)} vs mes anterior`) : ""}
+              accentColor="var(--danger)"
+              loading={loading}
+            />
+            <KpiCard
+              icon={CheckSquare}
+              value={kpis ? `${kpis.cumplimiento}%` : null}
+              label="Cumplimiento PESV"
+              accentColor={kpis?.cumplimiento >= 80 ? "#166534" : kpis?.cumplimiento >= 60 ? "#92400E" : "#991B1B"}
+              loading={loading}
+            />
+          </div>
         </div>
 
         {/* Gráficas row */}
@@ -212,7 +220,10 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Cumplimiento por módulo */}
           <div className="bg-white rounded-xl p-5" style={{ boxShadow: "var(--shadow)" }}>
-            <h3 className="text-sm font-semibold mb-4" style={{ color: "var(--text-primary)" }}>Cumplimiento por módulo PESV</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Cumplimiento por módulo PESV</h3>
+              <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: "#EFF6FF", color: "#1B6CA8" }}>Paso 20</span>
+            </div>
             {loading ? (
               <div className="space-y-3">{Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-6 bg-gray-100 rounded pulse" />)}</div>
             ) : (
@@ -265,9 +276,9 @@ export default function Dashboard() {
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Costos del mes</h3>
-                <p className="text-xs" style={{ color: "var(--text-muted)" }}>Incidentes y mantenimientos — Paso 20 Res. 40595</p>
+                <p className="text-xs" style={{ color: "var(--text-muted)" }}>Incidentes y mantenimientos</p>
               </div>
-              <DollarSign size={16} style={{ color: "var(--text-muted)" }} />
+              <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: "#EFF6FF", color: "#1B6CA8" }}>Paso 22</span>
             </div>
             {loading ? (
               <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-8 bg-gray-100 rounded pulse" />)}</div>
