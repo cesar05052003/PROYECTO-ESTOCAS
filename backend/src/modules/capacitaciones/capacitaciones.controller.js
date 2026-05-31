@@ -2,8 +2,6 @@ const prisma = require("../../config/db");
 
 const listar = async (req, res, next) => {
   try {
-    console.log("listar - usuario:", req.user);
-    console.log("listar - rol:", req.user?.rol);
     const capacitaciones = await prisma.capacitacion.findMany({
       where: { activo: true },
       include: {
@@ -12,16 +10,13 @@ const listar = async (req, res, next) => {
       },
       orderBy: { createdAt: "desc" },
     });
-    console.log("listar - capacitaciones encontradas:", capacitaciones.length);
     const data = capacitaciones.map((c) => ({
       ...c,
       totalParticipantes: c._count.participantes,
       completados: c.participantes.filter((p) => p.aprobado).length,
     }));
-    console.log("listar - data:", data);
     res.json(data);
   } catch (err) {
-    console.error("listar - error:", err);
     next(err);
   }
 };
@@ -45,7 +40,6 @@ const participantes = async (req, res, next) => {
 const inscribir = async (req, res, next) => {
   try {
     const { usuarioId, conductorId } = req.body;
-    console.log("inscribir - usuarioId:", usuarioId, "conductorId:", conductorId, "capacitacionId:", req.params.id);
     const existente = await prisma.usuarioCapacitacion.findFirst({
       where: { usuarioId, capacitacionId: req.params.id },
     });
@@ -53,10 +47,8 @@ const inscribir = async (req, res, next) => {
     const ins = await prisma.usuarioCapacitacion.create({
       data: { usuarioId, conductorId: conductorId || null, capacitacionId: req.params.id },
     });
-    console.log("inscribir - inscripción creada:", ins);
     res.status(201).json(ins);
   } catch (err) {
-    console.error("inscribir - error:", err);
     next(err);
   }
 };
@@ -90,25 +82,11 @@ const crear = async (req, res, next) => {
 const misCapacitaciones = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    console.log("misCapacitaciones - userId:", userId);
-    console.log("misCapacitaciones - req.user:", req.user);
     const capacitaciones = await prisma.usuarioCapacitacion.findMany({
-      where: { 
-        usuarioId: userId,
-        capacitacion: {
-          activo: true,
-        },
-      },
-      include: {
-        capacitacion: {
-          include: {
-            preguntas: true,
-          },
-        },
-      },
+      where: { usuarioId: userId, capacitacion: { activo: true } },
+      include: { capacitacion: { include: { preguntas: true } } },
       orderBy: { createdAt: "desc" },
     });
-    console.log("misCapacitaciones - capacitaciones encontradas:", capacitaciones.length);
     res.json(capacitaciones);
   } catch (err) {
     next(err);
@@ -117,20 +95,13 @@ const misCapacitaciones = async (req, res, next) => {
 
 const obtenerCapacitacion = async (req, res, next) => {
   try {
-    console.log("obtenerCapacitacion - id:", req.params.id);
     const capacitacion = await prisma.capacitacion.findUnique({
       where: { id: req.params.id },
-      include: {
-        preguntas: true,
-      },
+      include: { preguntas: true },
     });
-    console.log("obtenerCapacitacion - capacitacion:", JSON.stringify(capacitacion, null, 2));
-    console.log("obtenerCapacitacion - preguntas:", capacitacion?.preguntas);
-    console.log("obtenerCapacitacion - número de preguntas:", capacitacion?.preguntas?.length);
     if (!capacitacion) return res.status(404).json({ error: "Capacitación no encontrada" });
     res.json(capacitacion);
   } catch (err) {
-    console.error("obtenerCapacitacion - error:", err);
     next(err);
   }
 };
@@ -177,7 +148,6 @@ const enviarRespuestas = async (req, res, next) => {
 const agregarPregunta = async (req, res, next) => {
   try {
     const { capacitacionId, enunciado, opciones, respuestaCorrecta } = req.body;
-    console.log("agregarPregunta - datos:", { capacitacionId, enunciado, opciones, respuestaCorrecta });
     const pregunta = await prisma.pregunta.create({
       data: {
         capacitacionId,
@@ -186,10 +156,8 @@ const agregarPregunta = async (req, res, next) => {
         respuestaCorrecta: parseInt(respuestaCorrecta),
       },
     });
-    console.log("agregarPregunta - pregunta creada:", pregunta);
     res.status(201).json(pregunta);
   } catch (err) {
-    console.error("agregarPregunta - error:", err);
     next(err);
   }
 };

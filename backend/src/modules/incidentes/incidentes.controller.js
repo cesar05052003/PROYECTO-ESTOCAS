@@ -45,7 +45,7 @@ const estadisticas = async (req, res, next) => {
         orderBy: { fecha: "asc" },
       }),
       prisma.incidente.findFirst({
-        where: { tipo: "ACCIDENTE" },
+        where: { tipo: { startsWith: "ACCIDENTE" } },
         orderBy: { fecha: "desc" },
         select: { fecha: true },
       }),

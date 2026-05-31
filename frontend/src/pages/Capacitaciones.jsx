@@ -10,6 +10,7 @@ import MisCapacitaciones from "../components/capacitaciones/MisCapacitaciones";
 import RealizarCapacitacion from "../components/capacitaciones/RealizarCapacitacion";
 import VerCertificado from "../components/capacitaciones/VerCertificado";
 import useAuthStore from "../store/authStore";
+import { useRole } from "../hooks/useRole";
 
 const fmtFecha = (d) => d ? new Date(d).toLocaleDateString("es-CO") : "—";
 const estadoParticipante = (p) => {
@@ -25,9 +26,10 @@ const estadoColors = {
 
 export default function Capacitaciones() {
   const user = useAuthStore((s) => s.user);
-  const isAdmin = user?.rol === "ADMIN";
-  const isGerente = user?.rol === "GERENTE";
-  const canManage = isAdmin || isGerente;
+  const { isAdmin: isAdminFn, isGerente: isGerenteFn, isLider: isLiderFn } = useRole();
+  const isAdmin = isAdminFn();
+  const isGerente = isGerenteFn();
+  const canManage = isAdmin || isGerente || isLiderFn();
   const [vista, setVista] = useState(canManage ? "admin" : "mis");
   const [capacitaciones, setCapacitaciones] = useState([]);
   const [loading, setLoading] = useState(true);
