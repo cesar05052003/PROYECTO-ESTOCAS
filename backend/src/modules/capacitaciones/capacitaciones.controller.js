@@ -233,16 +233,46 @@ const eliminarCapacitacion = async (req, res, next) => {
   }
 };
 
-module.exports = { 
-  listar, 
-  participantes, 
-  inscribir, 
-  evaluar, 
+const registrarAsistencia = async (req, res, next) => {
+  try {
+    const { usuarioId, asistio, observaciones } = req.body;
+    const asistencia = await prisma.asistenciaCapacitacion.create({
+      data: {
+        capacitacionId: req.params.id,
+        usuarioId,
+        asistio: asistio !== false,
+        observaciones: observaciones || null,
+        registradoPor: req.user.id,
+      },
+      include: { usuario: { select: { nombre: true, email: true } } },
+    });
+    res.status(201).json(asistencia);
+  } catch (err) { next(err); }
+};
+
+const listarAsistencia = async (req, res, next) => {
+  try {
+    const lista = await prisma.asistenciaCapacitacion.findMany({
+      where: { capacitacionId: req.params.id },
+      include: { usuario: { select: { nombre: true, email: true } } },
+      orderBy: { fecha: "desc" },
+    });
+    res.json(lista);
+  } catch (err) { next(err); }
+};
+
+module.exports = {
+  listar,
+  participantes,
+  inscribir,
+  evaluar,
   crear,
   misCapacitaciones,
   obtenerCapacitacion,
   enviarRespuestas,
   agregarPregunta,
   generarCertificado,
-  eliminarCapacitacion
+  eliminarCapacitacion,
+  registrarAsistencia,
+  listarAsistencia,
 };

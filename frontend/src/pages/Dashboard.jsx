@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Users, Truck, ClipboardList, CheckSquare, Bell, AlertTriangle, TrendingUp, Sparkles } from "lucide-react";
+import { Users, Truck, ClipboardList, CheckSquare, Bell, AlertTriangle, TrendingUp, Sparkles, DollarSign, ShieldCheck } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from "recharts";
 import Header from "../components/layout/Header";
 import KpiCard from "../components/ui/KpiCard";
@@ -29,6 +29,7 @@ export default function Dashboard() {
   const [alertas, setAlertas] = useState([]);
   const [cumplimiento, setCumplimiento] = useState([]);
   const [incidentes, setIncidentes] = useState([]);
+  const [costos, setCostos] = useState(null);
   const [loading, setLoading] = useState(true);
   const [iaLoading, setIaLoading] = useState(false);
   const [iaModal, setIaModal] = useState(false);
@@ -47,7 +48,8 @@ export default function Dashboard() {
       api.get("/dashboard/alertas"),
       api.get("/dashboard/cumplimiento"),
       api.get("/incidentes?page=1"),
-    ]).then(([k, acc, al, cum, inc]) => {
+      api.get("/dashboard/costos"),
+    ]).then(([k, acc, al, cum, inc, cost]) => {
       setKpis(k.data);
       setAccidentalidad(acc.data.map((d) => ({
         mes: d.mes,
@@ -57,6 +59,7 @@ export default function Dashboard() {
       setAlertas(al.data);
       setCumplimiento(cum.data);
       setIncidentes(inc.data.data?.slice(0, 5) || []);
+      setCostos(cost.data);
     }).finally(() => setLoading(false));
   }, []);
 
@@ -254,6 +257,73 @@ export default function Dashboard() {
                 ))}
               </div>
             )}
+          </div>
+        </div>
+        {/* Costos del mes — Módulo 6 Resolución 40595 */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white rounded-xl p-5" style={{ boxShadow: "var(--shadow)" }}>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Costos del mes</h3>
+                <p className="text-xs" style={{ color: "var(--text-muted)" }}>Incidentes y mantenimientos — Paso 20 Res. 40595</p>
+              </div>
+              <DollarSign size={16} style={{ color: "var(--text-muted)" }} />
+            </div>
+            {loading ? (
+              <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-8 bg-gray-100 rounded pulse" />)}</div>
+            ) : (
+              <div className="space-y-3">
+                {[
+                  { label: "Costos por incidentes", value: costos?.costoIncidentesMes, prev: costos?.costoIncidentesAnterior, color: "#991B1B" },
+                  { label: "Costos de mantenimiento", value: costos?.costoMantenimientosMes, prev: costos?.costoMantenimientosAnterior, color: "#1B6CA8" },
+                  { label: "Costo total del mes", value: costos?.costoTotalMes, color: "#166534", bold: true },
+                ].map((item) => {
+                  const diff = item.prev != null ? item.value - item.prev : null;
+                  return (
+                    <div key={item.label} className={`flex items-center justify-between py-2 ${item.bold ? "border-t pt-3 mt-1" : "border-b"}`} style={{ borderColor: "#F3F4F6" }}>
+                      <span className={`text-xs ${item.bold ? "font-semibold" : ""}`} style={{ color: item.bold ? "var(--text-primary)" : "var(--text-secondary)" }}>{item.label}</span>
+                      <div className="text-right">
+                        <div className={`mono text-sm ${item.bold ? "font-bold" : "font-medium"}`} style={{ color: item.color }}>
+                          ${(item.value || 0).toLocaleString("es-CO")}
+                        </div>
+                        {diff != null && (
+                          <div className="text-xs" style={{ color: diff > 0 ? "var(--danger)" : diff < 0 ? "var(--success)" : "var(--text-muted)" }}>
+                            {diff > 0 ? "+" : ""}{diff.toLocaleString("es-CO")} vs mes ant.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* SG-SST — Objetivo 7 Lineamientos */}
+          <div className="bg-white rounded-xl p-5" style={{ boxShadow: "var(--shadow)" }}>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Integración SG-SST</h3>
+                <p className="text-xs" style={{ color: "var(--text-muted)" }}>Decreto 1072 de 2015 · Res. 40595 de 2022</p>
+              </div>
+              <ShieldCheck size={16} style={{ color: "var(--text-muted)" }} />
+            </div>
+            <div className="space-y-3 text-xs" style={{ color: "var(--text-secondary)" }}>
+              {[
+                { label: "Conductores activos en nómina", value: kpis ? `${kpis.conductoresActivos} / ${kpis.totalConductores}` : "—", color: "#166534" },
+                { label: "Vehículos con control operativo", value: kpis ? `${kpis.vehiculosOperativos} / ${kpis.totalVehiculos}` : "—", color: "#1B6CA8" },
+                { label: "Incidentes viales del mes", value: kpis?.incidentesMes ?? "—", color: kpis?.incidentesMes > 0 ? "#991B1B" : "#166534" },
+                { label: "Conductores con capacitación PESV", value: kpis ? `${kpis.conductoresCapacitados} / ${kpis.totalConductores}` : "—", color: "#92400E" },
+              ].map((row) => (
+                <div key={row.label} className="flex items-center justify-between py-1.5 border-b" style={{ borderColor: "#F3F4F6" }}>
+                  <span>{row.label}</span>
+                  <span className="mono font-semibold" style={{ color: row.color }}>{row.value}</span>
+                </div>
+              ))}
+              <p className="pt-2 text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>
+                Los indicadores de seguridad vial se integran al Sistema de Gestión de Seguridad y Salud en el Trabajo conforme al Art. 2.2.4.6.2 del Decreto 1072/2015.
+              </p>
+            </div>
           </div>
         </div>
       </div>

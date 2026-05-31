@@ -26,42 +26,57 @@ const generar = async (req, res, next) => {
 
     const inicioMes = new Date(anio, mes - 1, 1);
     const finMes = new Date(anio, mes, 0, 23, 59, 59);
+    const anioInicio = new Date(anio, 0, 1);
+    const anioFin = new Date(anio, 11, 31, 23, 59, 59);
 
-    const [totalConductores, capacitados, totalVehiculos, vehiculosMantenidos, inspecciones, incidentes, incidentesCerrados] = await Promise.all([
+    const [
+      totalConductores, capacitados, totalVehiculos, vehiculosMantenidos,
+      inspecciones, incidentes, vehiculosConPrograma,
+    ] = await Promise.all([
       prisma.conductor.count(),
       prisma.usuarioCapacitacion.groupBy({ by: ["conductorId"], where: { aprobado: true, conductorId: { not: null } } }),
       prisma.vehiculo.count(),
       prisma.vehiculo.count({ where: { estado: "ACTIVO" } }),
       prisma.inspeccionVehiculo.count({ where: { fecha: { gte: inicioMes, lte: finMes } } }),
       prisma.incidente.findMany({ where: { fecha: { gte: inicioMes, lte: finMes } } }),
-      prisma.incidente.count({ where: { fecha: { gte: inicioMes, lte: finMes }, estado: "CERRADO" } }),
+      prisma.mantenimiento.groupBy({ by: ["vehiculoId"], where: { fecha: { gte: anioInicio, lte: anioFin } } }),
     ]);
 
     const muertos = incidentes.reduce((sum, i) => sum + i.muertos, 0);
     const lesionados = incidentes.reduce((sum, i) => sum + i.lesionados, 0);
-    const accidentes = incidentes.filter(i => i.tipo.startsWith("ACCIDENTE")).length;
+    const accidentes = incidentes.filter((i) => i.tipo.startsWith("ACCIDENTE")).length;
+    const excesoVelocidad = incidentes.filter((i) => i.tipo.toUpperCase().includes("VELOCIDAD")).length;
+    const jornadaExcedida = incidentes.filter((i) => i.tipo.toUpperCase().includes("JORNADA")).length;
     const diasTrabajados = 22;
 
-    const reporte = await prisma.reporteAutogestion.upsert({
-      where: { id: "temp" },
-      update: {},
-      create: {
-        anio, mes,
-        indicadorMetas: 0,
-        indicadorAccidentes: diasTrabajados > 0 ? parseFloat(((accidentes / (totalConductores * diasTrabajados)) * 100).toFixed(2)) : 0,
-        indicadorMuertos: muertos,
-        indicadorLesionados: lesionados,
-        indicadorCapacitaciones: totalConductores > 0 ? parseFloat(((capacitados.length / totalConductores) * 100).toFixed(1)) : 0,
-        indicadorMantenimiento: totalVehiculos > 0 ? parseFloat(((vehiculosMantenidos / totalVehiculos) * 100).toFixed(1)) : 0,
-        indicadorInspecciones: inspecciones,
-        indicadorExcesoVelocidad: 0,
-        indicadorJornadaExcedida: 0,
-        indicadorVehiculosPrograma: 0,
-        cumplimientoGeneral: 0,
-        observaciones: `Reporte generado automáticamente para ${mes}/${anio}`,
-        generadoIA: false,
-      },
-    });
+    const indCapacitaciones = totalConductores > 0 ? parseFloat(((capacitados.length / totalConductores) * 100).toFixed(1)) : 0;
+    const indMantenimiento = totalVehiculos > 0 ? parseFloat(((vehiculosMantenidos / totalVehiculos) * 100).toFixed(1)) : 0;
+    const indVehiculosPrograma = totalVehiculos > 0 ? parseFloat(((vehiculosConPrograma.length / totalVehiculos) * 100).toFixed(1)) : 0;
+    const cumplimientoGeneral = parseFloat(((indCapacitaciones + indMantenimiento + indVehiculosPrograma) / 3).toFixed(1));
+
+    const datos = {
+      anio, mes,
+      indicadorMetas: 0,
+      indicadorAccidentes: diasTrabajados > 0 && totalConductores > 0
+        ? parseFloat(((accidentes / (totalConductores * diasTrabajados)) * 100).toFixed(2))
+        : 0,
+      indicadorMuertos: muertos,
+      indicadorLesionados: lesionados,
+      indicadorCapacitaciones: indCapacitaciones,
+      indicadorMantenimiento: indMantenimiento,
+      indicadorInspecciones: inspecciones,
+      indicadorExcesoVelocidad: excesoVelocidad,
+      indicadorJornadaExcedida: jornadaExcedida,
+      indicadorVehiculosPrograma: indVehiculosPrograma,
+      cumplimientoGeneral,
+      observaciones: `Reporte generado automáticamente para ${mes}/${anio}`,
+      generadoIA: false,
+    };
+
+    const existente = await prisma.reporteAutogestion.findFirst({ where: { anio, mes } });
+    const reporte = existente
+      ? await prisma.reporteAutogestion.update({ where: { id: existente.id }, data: datos })
+      : await prisma.reporteAutogestion.create({ data: datos });
 
     res.status(201).json(reporte);
   } catch (err) { next(err); }

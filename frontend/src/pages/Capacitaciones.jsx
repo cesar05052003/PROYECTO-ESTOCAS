@@ -3,7 +3,7 @@ import { Clock, Users, CheckCircle, Award, ChevronDown, Plus, UserPlus } from "l
 import Header from "../components/layout/Header";
 import Modal from "../components/ui/Modal";
 import StatusBadge from "../components/ui/StatusBadge";
-import { getCapacitaciones, getParticipantes, eliminarCapacitacion } from "../services/capacitaciones.service";
+import { getCapacitaciones, getParticipantes, eliminarCapacitacion, getAsistencia, registrarAsistencia } from "../services/capacitaciones.service";
 import CrearCapacitacion from "../components/capacitaciones/CrearCapacitacion";
 import InscribirUsuarios from "../components/capacitaciones/InscribirUsuarios";
 import MisCapacitaciones from "../components/capacitaciones/MisCapacitaciones";
@@ -41,6 +41,10 @@ export default function Capacitaciones() {
   const [modalCertificado, setModalCertificado] = useState(false);
   const [usuarioCapacitacionSeleccionada, setUsuarioCapacitacionSeleccionada] = useState(null);
   const [misCapKey, setMisCapKey] = useState(0);
+  const [modalAsistencia, setModalAsistencia] = useState(false);
+  const [asistencia, setAsistencia] = useState([]);
+  const [loadingAsist, setLoadingAsist] = useState(false);
+  const [registrandoAsist, setRegistrandoAsist] = useState(false);
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -82,6 +86,31 @@ export default function Capacitaciones() {
   const handleVerCertificado = (uc) => {
     setUsuarioCapacitacionSeleccionada(uc);
     setModalCertificado(true);
+  };
+
+  const handleVerAsistencia = async (cap) => {
+    setSeleccionada(cap);
+    setLoadingAsist(true);
+    setModalAsistencia(true);
+    try {
+      const { data } = await getAsistencia(cap.id);
+      setAsistencia(data);
+    } finally {
+      setLoadingAsist(false);
+    }
+  };
+
+  const handleRegistrarAsistencia = async (usuarioId, asistio) => {
+    if (!seleccionada) return;
+    setRegistrandoAsist(true);
+    try {
+      const { data } = await registrarAsistencia(seleccionada.id, { usuarioId, asistio });
+      setAsistencia((prev) => [data, ...prev]);
+    } catch {
+      alert("Error al registrar asistencia");
+    } finally {
+      setRegistrandoAsist(false);
+    }
   };
 
   const handleEliminarCapacitacion = async (id) => {
@@ -230,14 +259,22 @@ export default function Capacitaciones() {
                         </div>
                       </div>
 
-                      <div className="flex gap-2 mt-auto">
+                      <div className="flex gap-2 mt-auto flex-wrap">
                         <button
                           onClick={() => handleVerParticipantes(cap)}
                           className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium border transition-colors hover:bg-gray-50"
                           style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}
                         >
                           <Users size={14} />
-                          Ver participantes
+                          Participantes
+                        </button>
+                        <button
+                          onClick={() => handleVerAsistencia(cap)}
+                          className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium border transition-colors hover:bg-blue-50"
+                          style={{ borderColor: "#93C5FD", color: "#1B6CA8" }}
+                        >
+                          <CheckCircle size={14} />
+                          Asistencia
                         </button>
                         {isAdmin && (
                           <button
@@ -355,6 +392,90 @@ export default function Capacitaciones() {
         onClose={() => setModalCertificado(false)}
         usuarioCapacitacion={usuarioCapacitacionSeleccionada}
       />
+
+      {/* Modal control de asistencia */}
+      <Modal
+        open={modalAsistencia}
+        onClose={() => setModalAsistencia(false)}
+        title={`Asistencia — ${seleccionada?.titulo || ""}`}
+        size="lg"
+      >
+        <div className="space-y-4">
+          {canManage && (
+            <div className="p-3 rounded-lg border" style={{ borderColor: "#D1D5DB", backgroundColor: "#F9FAFB" }}>
+              <p className="text-xs font-medium mb-2" style={{ color: "var(--text-secondary)" }}>Registrar nueva asistencia</p>
+              <div className="flex gap-2">
+                <input
+                  id="asist-usuario-id"
+                  placeholder="ID de usuario"
+                  className="flex-1 text-xs px-3 py-2 rounded-lg border"
+                  style={{ borderColor: "#D1D5DB" }}
+                />
+                <button
+                  disabled={registrandoAsist}
+                  onClick={() => {
+                    const uid = document.getElementById("asist-usuario-id").value.trim();
+                    if (uid) handleRegistrarAsistencia(uid, true);
+                  }}
+                  className="px-3 py-2 rounded-lg text-xs font-medium text-white"
+                  style={{ backgroundColor: "#166534" }}
+                >
+                  Asistió
+                </button>
+                <button
+                  disabled={registrandoAsist}
+                  onClick={() => {
+                    const uid = document.getElementById("asist-usuario-id").value.trim();
+                    if (uid) handleRegistrarAsistencia(uid, false);
+                  }}
+                  className="px-3 py-2 rounded-lg text-xs font-medium border"
+                  style={{ borderColor: "#991B1B", color: "#991B1B" }}
+                >
+                  No asistió
+                </button>
+              </div>
+            </div>
+          )}
+
+          {loadingAsist ? (
+            <div className="space-y-3">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-8 bg-gray-100 rounded pulse" />)}</div>
+          ) : asistencia.length === 0 ? (
+            <div className="text-center py-8 text-sm" style={{ color: "var(--text-muted)" }}>
+              Sin registros de asistencia para esta capacitación
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead style={{ backgroundColor: "var(--bg-input)" }}>
+                  <tr>
+                    {["Participante", "Fecha", "Estado", "Observaciones"].map((h) => (
+                      <th key={h} className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {asistencia.map((a) => (
+                    <tr key={a.id} className="border-t" style={{ borderColor: "#F3F4F6" }}>
+                      <td className="px-3 py-2.5">
+                        <div className="font-medium text-sm" style={{ color: "var(--text-primary)" }}>{a.usuario.nombre}</div>
+                        <div className="text-xs" style={{ color: "var(--text-muted)" }}>{a.usuario.email}</div>
+                      </td>
+                      <td className="px-3 py-2.5 text-xs" style={{ color: "var(--text-muted)" }}>{fmtFecha(a.fecha)}</td>
+                      <td className="px-3 py-2.5">
+                        <span className="text-xs px-2 py-1 rounded-full font-medium"
+                          style={{ backgroundColor: a.asistio ? "var(--success-bg)" : "var(--danger-bg)", color: a.asistio ? "var(--success)" : "var(--danger)" }}>
+                          {a.asistio ? "Asistió" : "No asistió"}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2.5 text-xs" style={{ color: "var(--text-muted)" }}>{a.observaciones || "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }

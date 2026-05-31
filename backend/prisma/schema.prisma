@@ -24,6 +24,7 @@ model Usuario {
   incidentes          Incidente[]
   capacitaciones      UsuarioCapacitacion[]
   accionesCorrectivas AccionCorrectiva[]
+  asistencias         AsistenciaCapacitacion[]
 }
 
 // ─── PASO 1 Y 2: LÍDER Y COMITÉ DE SEGURIDAD VIAL ───────────────
@@ -252,6 +253,7 @@ model Capacitacion {
 
   participantes UsuarioCapacitacion[]
   preguntas     Pregunta[]
+  asistencias   AsistenciaCapacitacion[]
 }
 
 model Pregunta {
@@ -411,6 +413,21 @@ model Auditoria {
   informeUrl      String?
   estado          String   @default("EN_PROCESO")
   createdAt       DateTime @default(now())
+}
+
+// ─── PASO 10: ASISTENCIA A CAPACITACIONES ────────────────────────
+
+model AsistenciaCapacitacion {
+  id             String       @id @default(uuid())
+  capacitacionId String
+  usuarioId      String
+  capacitacion   Capacitacion @relation(fields: [capacitacionId], references: [id])
+  usuario        Usuario      @relation(fields: [usuarioId], references: [id])
+  fecha          DateTime     @default(now())
+  asistio        Boolean      @default(true)
+  observaciones  String?
+  registradoPor  String
+  createdAt      DateTime     @default(now())
 }
 
 // ─── ALERTAS ─────────────────────────────────────────────────────

@@ -99,6 +99,35 @@ const cumplimiento = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+const costos = async (req, res, next) => {
+  try {
+    const hoy = new Date();
+    const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    const mesAnteriorInicio = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
+    const mesAnteriorFin = new Date(hoy.getFullYear(), hoy.getMonth(), 0);
+
+    const [incMes, incAnterior, mantMes, mantAnterior] = await Promise.all([
+      prisma.incidente.findMany({ where: { fecha: { gte: inicioMes }, costoEstimado: { not: null } }, select: { costoEstimado: true } }),
+      prisma.incidente.findMany({ where: { fecha: { gte: mesAnteriorInicio, lte: mesAnteriorFin }, costoEstimado: { not: null } }, select: { costoEstimado: true } }),
+      prisma.mantenimiento.findMany({ where: { fecha: { gte: inicioMes }, costo: { not: null } }, select: { costo: true } }),
+      prisma.mantenimiento.findMany({ where: { fecha: { gte: mesAnteriorInicio, lte: mesAnteriorFin }, costo: { not: null } }, select: { costo: true } }),
+    ]);
+
+    const costoIncMes = incMes.reduce((s, i) => s + (i.costoEstimado || 0), 0);
+    const costoIncAnterior = incAnterior.reduce((s, i) => s + (i.costoEstimado || 0), 0);
+    const costoMantMes = mantMes.reduce((s, m) => s + (m.costo || 0), 0);
+    const costoMantAnterior = mantAnterior.reduce((s, m) => s + (m.costo || 0), 0);
+
+    res.json({
+      costoIncidentesMes: costoIncMes,
+      costoIncidentesAnterior: costoIncAnterior,
+      costoMantenimientosMes: costoMantMes,
+      costoMantenimientosAnterior: costoMantAnterior,
+      costoTotalMes: costoIncMes + costoMantMes,
+    });
+  } catch (err) { next(err); }
+};
+
 const marcarAlertaLeida = async (req, res, next) => {
   try {
     await prisma.alerta.update({ where: { id: req.params.id }, data: { leida: true } });
@@ -106,4 +135,4 @@ const marcarAlertaLeida = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-module.exports = { kpis, accidentalidad, alertasRecientes, cumplimiento, marcarAlertaLeida };
+module.exports = { kpis, accidentalidad, alertasRecientes, cumplimiento, costos, marcarAlertaLeida };

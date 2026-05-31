@@ -10,3 +10,5 @@ export const enviarRespuestas = (data) => api.post("/capacitaciones/enviar-respu
 export const agregarPregunta = (data) => api.post("/capacitaciones/preguntas", data);
 export const generarCertificado = (usuarioCapacitacionId) => api.post(`/capacitaciones/certificado/${usuarioCapacitacionId}`);
 export const eliminarCapacitacion = (id) => api.delete(`/capacitaciones/${id}`);
+export const getAsistencia = (id) => api.get(`/capacitaciones/${id}/asistencia`);
+export const registrarAsistencia = (id, data) => api.post(`/capacitaciones/${id}/asistencia`, data);

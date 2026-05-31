@@ -20,6 +20,9 @@ const PROMPTS = {
 
   INFORME_EJECUTIVO: (ctx) =>
     `Genera un Informe Ejecutivo mensual del estado del PESV de TransCor S.A.S. Incluye: resumen ejecutivo, estado de indicadores principales, avance por módulo del PESV (24 pasos), incidentes del período, hallazgos de inspecciones vehiculares, estado de capacitaciones, compromisos pendientes, conclusiones y recomendaciones de la dirección. ${ctx}`,
+
+  POLITICA_SGSST: (ctx) =>
+    `Genera la Política integrada de Seguridad y Salud en el Trabajo (SG-SST) y Seguridad Vial para TransCor S.A.S., conforme al Decreto 1072 de 2015 y la Resolución 40595 de 2022. Debe incluir: 1) Declaración del compromiso de la dirección con la seguridad vial y SST, 2) Alcance de la política sobre conductores, vehículos y rutas, 3) Objetivos integrados PESV-SG-SST, 4) Responsabilidades del Comité de Seguridad Vial y el COPASST, 5) Mecanismos de control de riesgos viales como parte del panorama de riesgos SST, 6) Indicadores de gestión integrados (accidentalidad, ausentismo, capacitaciones), 7) Compromisos de mejora continua. Citar artículos específicos del Decreto 1072 y la Resolución 40595. ${ctx}`,
 };
 
 const getModel = () => genAI.getGenerativeModel({
